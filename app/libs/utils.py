@@ -190,17 +190,17 @@ class Utils:
         body = {'sender': config.SMS_SENDER, 'recipient': recipient, 'message': message}
 
         try:
-            # response = requests.post(url=config.SEND_SMS_URL, headers=headers, data=json.dumps(body))
-            response = {'code': '00', 'msg': 'Message queued!', 'data': {'id': 'adasaknlsdknsksad'}}
+            response = requests.post(url=config.SEND_SMS_URL, headers=headers, data=json.dumps(body))
+            # response = {'code': '00', 'msg': 'Message queued!', 'data': {'id': 'adasaknlsdknsksad'}}
         except Exception as ex:
             Logger.error(__name__, "send_sms", "02", "Error while sending SMS: %s" % ex, body)
             return False
 
         if response is not None:
-            # resp_text = response.text
+            resp_text = response.text
             try:
-                # resp_json = json.loads(resp_text)
-                resp_json = response
+                resp_json = json.loads(resp_text)
+                # resp_json = response
             except Exception as e:
                 Logger.error(__name__, "send_sms", "02", "Error while parsing SMS API response: %s" % e, body)
                 return False
