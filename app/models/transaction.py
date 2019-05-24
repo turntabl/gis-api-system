@@ -78,7 +78,7 @@ class Transaction(db.Document):
     payout_type = db.StringField(null=True, default=None, choices=PayoutType.values())
     initiated_by = db.StringField(null=True, default=None)
     approved_by = db.StringField(null=True, default=None)
-    payed_out_by = db.StringField(null=True, default=None)
+    paid_by = db.StringField(null=True, default=None)
     initiated_at = db.DateTimeField(null=True, default=None)
     customer_response_at = db.DateTimeField(null=True, default=None)
     created_at = db.DateTimeField(default=datetime.datetime.utcnow)

@@ -152,6 +152,8 @@ class TransactionService:
                 transaction_data.payment_status = update_data['payment_status']
             if 'cheque_resubmission_flag' in update_data:
                 transaction_data.cheque_resubmission_flag = update_data['cheque_resubmission_flag']
+            if 'paid_by' in update_data:
+                transaction_data.paid_by = update_data['paid_by']
             if 'payout_type' in update_data:
                 transaction_data.payout_type = update_data['payout_type']
 

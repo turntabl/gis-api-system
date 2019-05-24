@@ -187,7 +187,7 @@ class Utils:
     @staticmethod
     def send_sms(recipient, message):
         headers = {'Content-Type': 'application/json', 'X-SMS-Apikey': config.SMS_API_KEY}
-        body = {'sender': config.SMS_SENDER, 'recipient': recipient, 'message': message}
+        body = {'sender': config.SMS_SENDER, 'recipient': str(recipient), 'message': message}
 
         try:
             response = requests.post(url=config.SEND_SMS_URL, headers=headers, data=json.dumps(body))

@@ -19,7 +19,7 @@ from app.services.v1.transaction import TransactionService
 
 @api.route('/v1/transactions/initiate', methods=['POST'])
 @api_request.json
-@api_request.required_body_params('cheque_number', 'account_number', 'payee_name', 'currency', 'amount', 'reference')
+@api_request.required_body_params('cheque_number', 'account_number', 'payee_name', 'currency', 'amount')
 def initiate_transaction():
     # admin_data = g.admin
     admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
@@ -32,7 +32,7 @@ def initiate_transaction():
     payee_name = request_data['payee_name'].strip()
     currency = request_data['currency'].strip()
     amount = request_data['amount']
-    reference = request_data['reference'].strip()
+    reference = request_data.get('reference') or ''
 
     # Validate parameters
     if not isinstance(cheque_number, str):
@@ -587,7 +587,7 @@ def customer_approval_decline(transaction_id):
     return JsonResponse.success(msg=resp_msg, data=resp_data)
 
 
-@api.route('/v1/transactions/msisdn/pre-approved', methods=['GET'])
+@api.route('/v1/transactions/status/pre-approved', methods=['GET'])
 def get_pre_approved_transactions():
     # admin_data = g.admin
     admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
@@ -610,6 +610,7 @@ def get_pre_approved_transactions():
         **allowed_filters,
         'pre_approved': True,
         'customer_status': CustomerStatus.APPROVED.value,
+        'bank_status': None,
         'payment_status': PaymentStatus.UNPAID.value
     }
     try:
@@ -646,6 +647,7 @@ def get_approved_transactions():
         'institution': institution,
         'processed_branch': branch,
         'customer_status': CustomerStatus.APPROVED.value,
+        'bank_status': BankStatus.PENDING_BANK_APPROVAL.value,
         'payment_status': PaymentStatus.UNPAID.value
     }
     try:
@@ -660,7 +662,7 @@ def get_approved_transactions():
 
 @api.route('/v1/transactions/<transaction_id>/bank/update', methods=['POST'])
 @api_request.json
-@api_request.required_body_params('status', 'comment')
+@api_request.required_body_params('status')
 def post_customer_approval_update(transaction_id):
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -742,6 +744,7 @@ def confirm_payout(transaction_id):
     transaction_update = {
         'payout_type': payout_type,
         'bank_status': BankStatus.COMPLETED.value,
+        'paid_by': admin_data['username'],
         'payment_status': PaymentStatus.PAID.value,
         'cheque_resubmission_flag': False
     }
@@ -756,6 +759,7 @@ def confirm_payout(transaction_id):
         'id': updated_transaction_data['id'],
         'bank_status': updated_transaction_data['bank_status'],
         'payout_type': updated_transaction_data['payout_type'],
-        'payment_status': updated_transaction_data['payment_status']
+        'payment_status': updated_transaction_data['payment_status'],
+        'paid_by': updated_transaction_data['paid_by']
     }
     return JsonResponse.success(msg='Payout completed!', data=resp_data)
