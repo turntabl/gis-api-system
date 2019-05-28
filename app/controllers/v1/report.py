@@ -29,21 +29,19 @@ def get_cheques():
         paginate = params.pop('paginate').lower() != 'false'
 
     # Filter transactions
-    Logger.debug(__name__, "get_cheques", "00", "Getting approved transactions for branch [%s]" % branch, params)
+    Logger.debug(__name__, "get_cheques", "00", "Getting transactions for branch [%s]" % branch, params)
     allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date')}
     transaction_filter = {
         **allowed_filters,
         'institution': institution,
-        'processed_branch': branch,
-        'bank_status': BankStatus.BOUNCED.value,
-        'payment_status': PaymentStatus.UNPAID.value
+        'processed_branch': branch
     }
     try:
         transaction_list, nav = TransactionService.find_transactions(paginate=paginate, **transaction_filter)
-        Logger.info(__name__, "get_cheques", "00", "Found %s bounced transaction(s) for branch [%s]" % (nav.get('total_records'), branch))
+        Logger.info(__name__, "get_cheques", "00", "Found %s transaction(s) for branch [%s]" % (nav.get('total_records'), branch), params)
     except Exception:
-        Logger.error(__name__, "get_cheques", "02", "Could not get bounced transactions for branch [%s]" % branch)
-        return JsonResponse.server_error('Could not get approved transactions')
+        Logger.error(__name__, "get_cheques", "02", "Could not get bounced transactions for branch [%s]" % branch, params)
+        return JsonResponse.server_error('Could not get transactions')
 
     return JsonResponse.success(data=transaction_list, nav=nav)
 

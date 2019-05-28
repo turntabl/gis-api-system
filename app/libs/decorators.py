@@ -1,5 +1,6 @@
 # decorators.py
 
+import base64
 import datetime
 import json
 import traceback
@@ -14,6 +15,7 @@ from app.models.administrator import Administrator
 from app.models.administrator import Status as AdminStatus
 from app.services.v1.administrator import AdministratorService
 from app.services.v1.application import ApplicationService
+from app.services.v1.role import RoleService
 
 
 class ApiRequest:
@@ -76,17 +78,27 @@ class ApiRequest:
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            Logger.debug(__name__, "user_authenticate", "00", "Authenticating User")
             request_headers = dict(request.headers)
             Logger.debug(__name__, "user_authenticate", "00", "Request Headers: %s" % request_headers)
             if not request_headers:
                 return jsonify(code='03', msg='Unauthorized')
-            elif 'Token' not in request_headers or 'User' not in request_headers:
+            elif 'Authorization' not in request_headers:
+                return jsonify(code='03', msg='Unauthorized')
+
+            auth_header = request.headers.get('Authorization')
+            if auth_header is not None:
+                try:
+                    auth_key = (base64.b64decode(auth_header.split("Basic ")[1])).decode("utf-8")
+                except Exception:
+                    Logger.warn(__name__, "user_authenticate", "01", "Invalid Authorization header: [%s]" % auth_header)
+                    return jsonify(code='03', msg='Unauthorized')
+            else:
+                Logger.warn(__name__, "user_authenticate", "01", "Missing Authorization header")
                 return jsonify(code='03', msg='Unauthorized')
 
             # Get user authentication header values
-            token = request_headers['Token']
-            user = request_headers['User']
+            user = auth_key.split(':')[0]
+            token = auth_key.split(':')[1]
 
             # Find user and verify that user is ACTIVE
             user_data = AdministratorService.find_by_username(user, include_password=True)
@@ -97,11 +109,16 @@ class ApiRequest:
                 Logger.warn(__name__, "user_authenticate", "01", "User is not active. Status: [%s]" % user_data['status'])
                 return jsonify(code='04', msg='Forbidden')
 
+            # Check if session token is valid and has not expired
+            if user_data['session_token'] != token:
+                Logger.error(__name__, "user_authenticate", "02", "Invalid token")
+                return jsonify(code='03', msg='Unauthorized')
+
             # Check if user's institution is active
             if user_data['institution'] is None:
                 Logger.warn(__name__, "user_authenticate", "01", "User institution [%s] not found" % user_data['institution'])
                 return jsonify(code='04', msg='User institution not found')
-            elif not user_data['institution']['active']:
+            elif not user_data['institution']['status']:
                 Logger.warn(__name__, "user_authenticate", "01", "User institution [%s] is not active" % user_data['institution'])
                 return jsonify(code='04', msg='User institution is not active')
 
@@ -112,44 +129,77 @@ class ApiRequest:
 
         return wrapper
 
-    def admin_authenticate(self, func):
+    def admin_authenticate(self, permissions):
 
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            Logger.debug(__name__, "admin_authenticate", "00", "Authenticating super_admin/admin")
-            request_headers = dict(request.headers)
-            Logger.debug(__name__, "admin_authenticate", "00", "Request Headers: %s" % request_headers)
-            if not request_headers:
-                return jsonify(code='03', msg='Unauthorized')
-            elif 'Token' not in request_headers or 'User' not in request_headers:
-                return jsonify(code='03', msg='Unauthorized')
+        def wrapper(f):
 
-            # Get user authentication header values
-            token = request_headers['Token']
-            user = request_headers['User']
+            @wraps(f)
+            def wrapped(*args, **kwargs):
+                request_headers = dict(request.headers)
+                Logger.debug(__name__, "admin_authenticate", "00", "Request Headers: %s" % request_headers)
+                if not request_headers:
+                    return jsonify(code='03', msg='Unauthorized')
+                elif 'Authorization' not in request_headers:
+                    return jsonify(code='03', msg='Unauthorized')
 
-            # Find user and verify that user has admin rights and is ACTIVE
-            user_data = AdministratorService.find_by_username(user, include_password=True)
-            if user_data is None:
-                Logger.error(__name__, "admin_authenticate", "02", "Valid session found but user not found")
-                return jsonify(code='03', msg='Unauthorized')
-            elif user_data['status'] != AdminStatus.ACTIVE.value:
-                Logger.warn(__name__, "admin_authenticate", "01", "User is not active. Status: [%s]" % user_data['status'])
-                return jsonify(code='04', msg='Forbidden')
+                auth_header = request.headers.get('Authorization')
+                if auth_header is not None:
+                    try:
+                        auth_key = (base64.b64decode(auth_header.split("Basic ")[1])).decode("utf-8")
+                    except Exception:
+                        Logger.warn(__name__, "admin_authenticate", "01", "Invalid Authorization header")
+                        return jsonify(code='03', msg='Unauthorized')
+                else:
+                    Logger.warn(__name__, "admin_authenticate", "01", "Missing Authorization header")
+                    return jsonify(code='03', msg='Unauthorized')
 
-            # Check if user's institution is active
-            if user_data['institution'] is None:
-                Logger.warn(__name__, "user_authenticate", "01", "User institution [%s] not found" % user_data['institution'])
-                return jsonify(code='04', msg='User institution not found')
-            elif not user_data['institution']['active']:
-                Logger.warn(__name__, "user_authenticate", "01", "User institution [%s] is not active" % user_data['institution'])
-                return jsonify(code='04', msg='User institution is not active')
+                # Get user authentication header values]
+                user = auth_key.split(':')[0]
+                token = auth_key.split(':')[1]
 
-            # Set request context attributes
-            g.admin = user_data
+                # Find user and verify that user has admin rights and is ACTIVE
+                user_data = AdministratorService.find_by_username(user, include_password=True)
+                if user_data is None:
+                    Logger.error(__name__, "admin_authenticate", "02", "Valid session found but user not found")
+                    return jsonify(code='03', msg='Unauthorized')
+                elif user_data['status'] != AdminStatus.ACTIVE.value:
+                    Logger.warn(__name__, "admin_authenticate", "01", "User is not active. Status: [%s]" % user_data['status'])
+                    return jsonify(code='04', msg='Forbidden')
 
-            return func(*args, **kwargs)
+                # Check if session token is valid and has not expired
+                if user_data['session_token'] != token:
+                    Logger.error(__name__, "admin_authenticate", "02", "Invalid token")
+                    return jsonify(code='03', msg='Unauthorized')
 
+                # Check if user's institution is active
+                if user_data['institution'] is None:
+                    Logger.warn(__name__, "user_authenticate", "01", "User institution [%s] not found" % user_data['institution'])
+                    return jsonify(code='04', msg='User institution not found')
+                elif not user_data['institution']['status']:
+                    Logger.warn(__name__, "user_authenticate", "01", "User institution [%s] is not active" % user_data['institution'])
+                    return jsonify(code='04', msg='User institution is not active')
+
+                # split module and actions
+                module = permissions.split('.')[0]
+                action = permissions.split('.')[1]
+
+                try:
+                    role = RoleService.get_by_id(user_data['role'])
+                    if role is None:
+                        Logger.warn(__name__, "user_authenticate", "01", "Role [%s] not found" % user_data['role'])
+                        return jsonify(code='04', msg='Role not found')
+
+                    if role['privileges'][module][action] == False:
+                        return jsonify(code='04', msg='User not allowed for [%s]' % action)
+                except Exception:
+                    return jsonify(code='04', msg='User not allowed for [%s]' % action)
+
+                # Set request context attributes
+                g.admin = user_data
+
+                return f(*args, **kwargs)
+
+            return wrapped
         return wrapper
 
     def required_body_params(self, *required_params):

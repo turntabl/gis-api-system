@@ -1,8 +1,10 @@
 # utils.py
 
 import asyncio
+import csv
 import datetime
 import hashlib
+import io
 import json
 import ntpath
 import os
@@ -213,6 +215,25 @@ class Utils:
         else:
             Logger.warn(__name__, "send_sms", "01", "No response from SMS API", body)
             return False
+
+    @staticmethod
+    def write_transaction_data_to_csv(data_list):
+        csv_io = io.StringIO()
+        headers = ['Account Number', 'Customer Name', 'Balance', 'Institution', 'Bank Status', 'Payment Status', 'Inititated By', 'Approved By', 'Inititated At']
+        writer = csv.writer(csv_io, quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(headers)
+        for data in data_list:
+            writer.writerow(
+                [data['account_number'], data['customer_name'], data['balance'], data['institution'], data['bank_status'], data['payment_status'],
+                 data['initiated_by'], data['approved_by'], data['initiated_at']]
+            )
+
+        # Creating the byteIO object from the StringIO Object
+        mem = io.BytesIO()
+        mem.write(csv_io.getvalue().encode('utf-8'))
+        mem.seek(0)
+        csv_io.close()
+        return mem
 
 
 class StringUtils:
