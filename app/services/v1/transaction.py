@@ -22,6 +22,7 @@ class TransactionService:
             transaction_data = Transaction()
             transaction_data.cheque_number = data['cheque_number'].strip()
             transaction_data.account_number = data['account_number'].strip()
+            transaction_data.msisdn = data['msisdn']
             transaction_data.payee_name = data['payee_name'].strip()
             transaction_data.currency = data['currency'].strip()
             transaction_data.amount = Decimal(data['amount'])
@@ -29,6 +30,7 @@ class TransactionService:
             transaction_data.institution = data.get('institution') or None
             transaction_data.processed_branch = data.get('processed_branch') or None
             if data.get('pre_approved') is True:
+                transaction_data.msisdn = data['msisdn']
                 transaction_data.pre_approved = data['pre_approved']
                 transaction_data.customer_status = CustomerStatus.APPROVED.value
                 transaction_data.customer_response_at = datetime.datetime.now()
@@ -136,12 +138,20 @@ class TransactionService:
                 transaction_data.mandate = update_data['mandate'].strip()
             if 'cheque_instructions' in update_data:
                 transaction_data.cheque_instructions = update_data['cheque_instructions'].strip()
+            if 'institution' in update_data:
+                transaction_data.institution = update_data['institution'].strip()
+            if 'processed_branch' in update_data:
+                transaction_data.processed_branch = update_data['processed_branch'].strip()
             if 'approval_sms_sent' in update_data:
                 transaction_data.approval_sms_sent = update_data['approval_sms_sent']
+            if 'approval_retries' in update_data:
+                transaction_data.approval_retries = update_data['approval_retries']
             if 'customer_status' in update_data:
                 transaction_data.customer_status = update_data['customer_status']
                 if update_data['customer_status'] in (CustomerStatus.APPROVED.value, CustomerStatus.DECLINED.value):
                     transaction_data.customer_response_at = datetime.datetime.now()
+                elif update_data['customer_status'] == CustomerStatus.EXPIRED.value:
+                    transaction_data.expired_at = datetime.datetime.now()
             if 'customer_remarks' in update_data:
                 transaction_data.customer_remarks = update_data['customer_remarks'].strip()
             if 'bank_status' in update_data:

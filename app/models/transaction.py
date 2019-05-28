@@ -11,6 +11,7 @@ class CustomerStatus(enum.Enum):
     PENDING_APPROVAL = 'PENDING_APPROVAL'
     APPROVED = 'APPROVED'
     DECLINED = 'DECLINED'
+    EXPIRED = 'EXPIRED'
 
     @staticmethod
     def values():
@@ -22,6 +23,7 @@ class BankStatus(enum.Enum):
     PENDING_CUSTOMER_APPROVAL = 'PENDING_CUSTOMER_APPROVAL'
     PENDING_BANK_APPROVAL = 'PENDING_BANK_APPROVAL'
     PENDING_PAYMENT_APPROVAL = 'PENDING_PAYMENT_APPROVAL'
+    PAYMENT_APPROVED = 'PAYMENT_APPROVED'
     COMPLETED = 'COMPLETED'
     DECLINED = 'DECLINED'
     CANCELLED = 'CANCELLED'
@@ -49,7 +51,7 @@ class PayoutType(enum.Enum):
 
     @staticmethod
     def values():
-        return [po.value for po in PaymentStatus]
+        return [po.value for po in PayoutType]
 
 
 class Transaction(db.Document):
@@ -69,6 +71,7 @@ class Transaction(db.Document):
     processed_branch = db.StringField(null=True, default=None)
     pre_approved = db.BooleanField(required=True, default=False)
     approval_sms_sent = db.BooleanField(required=True, default=False)
+    approval_retries = db.IntField(default=0)
     customer_status = db.StringField(null=True, default=None, choices=CustomerStatus.values())
     customer_remarks = db.StringField(required=False, default='')
     bank_status = db.StringField(null=True, default=None, choices=BankStatus.values())
@@ -81,6 +84,7 @@ class Transaction(db.Document):
     paid_by = db.StringField(null=True, default=None)
     initiated_at = db.DateTimeField(null=True, default=None)
     customer_response_at = db.DateTimeField(null=True, default=None)
+    expired_at = db.DateTimeField(null=True, default=None)
     created_at = db.DateTimeField(default=datetime.datetime.utcnow)
     modified_at = db.DateTimeField(null=True, default=None, onupdate=datetime.datetime.utcnow)
 

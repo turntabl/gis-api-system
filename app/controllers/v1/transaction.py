@@ -1,5 +1,6 @@
 # transaction.py
 
+import datetime
 import json
 
 from flask import request
@@ -9,6 +10,7 @@ from app.controllers import api
 from app.controllers import api_request
 from app.controllers import JsonResponse
 from app.libs.logger import Logger
+from app.libs.scheduler import Scheduler
 from app.libs.utils import Utils
 from app.models.transaction import BankStatus
 from app.models.transaction import CustomerStatus
@@ -133,11 +135,12 @@ def initiate_transaction():
 
 @api.route('/v1/transactions/pre-approval', methods=['POST'])
 @api_request.json
-@api_request.required_body_params('cheque_number', 'account_number', 'currency', 'amount', 'pin')
+@api_request.required_body_params('cheque_number', 'account_number', 'currency', 'amount', 'msisdn', 'pin')
 def pre_approve_cheque():
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
     Logger.debug(__name__, "pre_approve_cheque", "00", "Received request to initiate transaction", request_data)
+    msisdn = request_data['msisdn']
     cheque_number = request_data['cheque_number'].strip()
     account_number = request_data['account_number'].strip()
     currency = request_data['currency'].strip()
@@ -157,6 +160,12 @@ def pre_approve_cheque():
     if not account_number.isdigit() or len(account_number) < 9 or len(account_number) > 13:
         Logger.warn(__name__, "pre_approve_cheque", "01", "Account number is not digits only or has less than 9 or more than 13 digits")
         return JsonResponse.bad_request('Account number should have between 9 to 13 digits')
+
+    try:
+        long_msisdn = int(msisdn)
+    except ValueError:
+        Logger.warn(__name__, "pre_approve_cheque", "01", "Msisdn is not a number. Type: [%s]" % type(msisdn))
+        return JsonResponse.bad_request('Msisdn should be a number')
 
     try:
         decimal_amount = float(amount)
@@ -217,6 +226,7 @@ def pre_approve_cheque():
     # Save transaction with initiator
     transaction_request = {
         **transaction_filter,
+        'msisdn': long_msisdn,
         'payee_name': '',
         'currency': currency,
         'amount': decimal_amount,
@@ -236,11 +246,147 @@ def pre_approve_cheque():
     has_account_details = False
     account_details = {}
 
+    # Setup expiry if not processed after 48 hours
+    expire_at = datetime.datetime.now() + datetime.timedelta(hours=48)
+    Scheduler.expire_pre_approved_cheque.apply_async(args=[transaction_data['id']], eta=expire_at)
+
     resp_data = {
         'id': transaction_data['id'],
         'account_number': transaction_data['account_number']
     }
     return JsonResponse.success(msg='Transaction initiated', data=resp_data)
+
+
+@api.route('/v1/transactions/<transaction_id>/pre-approved/process', methods=['POST'])
+@api_request.json
+@api_request.required_body_params('name', 'msisdn', 'balance', 'mandate', 'cheque_instructions')
+def process_pre_approved_cheque(transaction_id):
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+
+    # Get request data
+    request_data = json.loads(request.data.decode('utf-8'))
+    Logger.debug(__name__, "process_pre_approved_cheque", "00", "Received request to complete transaction initiation", request_data)
+    name = request_data['name'].strip()
+    msisdn = request_data['msisdn']
+    balance = request_data['balance']
+    mandate = request_data['mandate'].strip()
+    cheque_instructions = request_data['cheque_instructions'].strip()
+
+    if not isinstance(name, str):
+        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Name is not a string. Type: [%s]" % type(name))
+        return JsonResponse.bad_request('Name should be a string')
+
+    try:
+        decimal_balance = float(balance)
+    except ValueError:
+        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Balance is not a decimal. Type: [%s]" % type(balance))
+        return JsonResponse.bad_request('Balance should be a decimal')
+
+    try:
+        long_msisdn = int(msisdn)
+    except ValueError:
+        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Msisdn is not a number. Type: [%s]" % type(msisdn))
+        return JsonResponse.bad_request('Msisdn should be a number')
+
+    if not isinstance(mandate, str):
+        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Mandate is not a string. Type: [%s]" % type(mandate))
+        return JsonResponse.bad_request('Mandate should be a string')
+    if not isinstance(cheque_instructions, str):
+        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Cheque instructions is not a string. Type: [%s]" % type(cheque_instructions))
+        return JsonResponse.bad_request('Cheque instructions should be a string')
+
+    # Get transaction details
+    Logger.debug(__name__, "process_pre_approved_cheque", "00", "Finding details for transaction [%s]" % transaction_id)
+    transaction_data = TransactionService.get_by_id(transaction_id)
+    if transaction_data is None:
+        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Transaction [%s] does not exist" % transaction_id)
+        return JsonResponse.failed('Transaction not found')
+    if not transaction_data['pre_approved'] or transaction_data['customer_status'] != CustomerStatus.APPROVED.value or transaction_data['bank_status'] is not None:
+        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Transaction [%s] has not been pre-approved or has been processed already" % transaction_id)
+        return JsonResponse.failed('Transaction has not been pre-approved or has been processed already')
+
+    # Update transaction
+    transaction_update = {
+        'institution': admin_data['institution']['short_name'],
+        'processed_branch': admin_data['branch']['branch_id'],
+        'customer_name': name,
+        'balance': decimal_balance,
+        'mandate': mandate,
+        'cheque_instructions': cheque_instructions,
+        'bank_status': BankStatus.PENDING_BANK_APPROVAL.value
+    }
+    try:
+        updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
+    except Exception as ex:
+        Logger.error(__name__, "process_pre_approved_cheque", "02", "Could not update pre-approved transaction [%s]" % transaction_id)
+        return JsonResponse.server_error('Processing pre-approved cheque failed')
+
+    resp_msg = 'Cheque sent for payment approval'
+    resp_data = {
+        'id': updated_transaction_data['id'],
+        'customer_status': updated_transaction_data['customer_status'],
+        'bank_status': updated_transaction_data['bank_status']
+    }
+    return JsonResponse.success(msg=resp_msg, data=resp_data)
+
+
+@api.route('/v1/transactions/<transaction_id>/pre-approved/cancel', methods=['POST'])
+@api_request.required_body_params('comment')
+def cancel_pre_approved_cheque(transaction_id):
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+
+    # Get request data
+    request_data = json.loads(request.data.decode('utf-8'))
+    Logger.debug(__name__, "cancel_pre_approved_cheque", "00", "Received request to cancel pre-approved transaction [%s]", request_data)
+    comment = request_data['comment'].strip()
+
+    # Get transaction details
+    Logger.debug(__name__, "cancel_pre_approved_cheque", "00", "Finding details for transaction [%s]" % transaction_id)
+    transaction_data = TransactionService.get_by_id(transaction_id)
+    if transaction_data is None:
+        Logger.warn(__name__, "cancel_pre_approved_cheque", "01", "Transaction [%s] does not exist" % transaction_id)
+        return JsonResponse.failed('Transaction not found')
+    if not transaction_data['pre_approved'] or transaction_data['customer_status'] != CustomerStatus.APPROVED.value or transaction_data['bank_status'] is not None:
+        Logger.warn(__name__, "cancel_pre_approved_cheque", "01",
+                    "Transaction [%s] has not been pre-approved or has been processed already. CustomerStatus: [%s] BankStatus: [%s]"
+                    % (transaction_id, transaction_data['customer_status'], transaction_data['bank_status']))
+        return JsonResponse.failed('Cheque has not been pre-approved or has been processed already')
+    Logger.info(__name__, "cancel_pre_approved_cheque", "00", "Transaction [%s] found and has been pre-approved" % transaction_id)
+
+    # Update transaction accordingly
+    Logger.debug(__name__, "cancel_pre_approved_cheque", "00", "Updating transaction [%s] to bounced" % transaction_id)
+    transaction_update = {
+        'bank_status': BankStatus.CANCELLED.value,
+        'bank_remarks': comment
+    }
+    try:
+        updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
+        Logger.info(__name__, "cancel_pre_approved_cheque", "00", "Transaction [%s] cancelled successfully!" % transaction_id)
+    except Exception as ex:
+        Logger.error(__name__, "cancel_pre_approved_cheque", "02", "Could not update transaction [%s] to CANCELLED: %s" % (transaction_id, ex))
+        return JsonResponse.server_error('Cancelling cheque failed')
+
+    # Account owner msisdn
+    msisdn = updated_transaction_data['msisdn']
+
+    # Send cheque cancel SMS to msisdn linked to account number
+    Logger.debug(__name__, "cancel_pre_approved_cheque", "00", "Sending cheque cancel SMS to [%s]" % msisdn)
+    sms_sent = Utils.send_sms(msisdn, config.CHEQUE_CANCEL_SMS)
+    if sms_sent:
+        Logger.info(__name__, "cancel_pre_approved_cheque", "00", "Cheque cancel SMS sent to [%s]" % msisdn)
+    else:
+        Logger.warn(__name__, "cancel_pre_approved_cheque", "00", "Sending cheque cancel SMS to [%s] failed" % msisdn)
+        return JsonResponse.failed('Cheque cancelled, but sending SMS to customer failed')
+
+    resp_msg = 'Cheque cancelled and SMS sent to %s' % msisdn
+    resp_data = {
+        'id': updated_transaction_data['id'],
+        'customer_status': updated_transaction_data['customer_status'],
+        'bank_status': updated_transaction_data['bank_status']
+    }
+    return JsonResponse.success(msg=resp_msg, data=resp_data)
 
 
 @api.route('/v1/transactions/<transaction_id>/initiate/complete', methods=['POST'])
@@ -272,8 +418,8 @@ def complete_transaction_initiation(transaction_id):
     try:
         long_msisdn = int(msisdn)
     except ValueError:
-        Logger.warn(__name__, "complete_transaction_initiation", "01", "Balance is not a decimal. Type: [%s]" % type(msisdn))
-        return JsonResponse.bad_request('Balance should be a decimal')
+        Logger.warn(__name__, "complete_transaction_initiation", "01", "Msisdn is not a number. Type: [%s]" % type(msisdn))
+        return JsonResponse.bad_request('Msisdn should be a number')
 
     if not isinstance(mandate, str):
         Logger.warn(__name__, "complete_transaction_initiation", "01", "Mandate is not a string. Type: [%s]" % type(mandate))
@@ -326,8 +472,14 @@ def complete_transaction_initiation(transaction_id):
             Logger.error(__name__, "complete_transaction_initiation", "02", "Updating transaction [%s] with approval_sms_sent status failed: %s" % (transaction_id, ex))
             return JsonResponse.server_error('Sending approval request to customer failed')
     else:
-        Logger.warn(__name__, "send_approval_request", "00", "Sending cheque approval SMS to [%s] failed" % msisdn)
+        Logger.warn(__name__, "complete_transaction_initiation", "00", "Sending cheque approval SMS to [%s] failed" % msisdn)
         return JsonResponse.failed('Sending approval request to customer failed')
+
+    # Setup to remind if not approved after 15 minutes
+    remind_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
+    expire_at = datetime.datetime.now() + datetime.timedelta(hours=24)
+    Scheduler.send_approval_reminder.apply_async(args=[transaction_data['id']], eta=remind_at)
+    Scheduler.expire_cheque_pending_customer.apply_async(args=[transaction_data['id']], eta=expire_at)
 
     resp_msg = 'Initiation completed and approval request sent to %s' % msisdn
     resp_data = {
@@ -337,6 +489,51 @@ def complete_transaction_initiation(transaction_id):
         'approval_sms_sent': updated_transaction_data['approval_sms_sent']
     }
     return JsonResponse.success(msg=resp_msg, data=resp_data)
+
+
+@api.route('/v1/transactions/<transaction_id>/bounce', methods=['POST'])
+@api_request.required_body_params('comment')
+def bounce_transaction_before_approval(transaction_id):
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+
+    # Get request data
+    request_data = json.loads(request.data.decode('utf-8'))
+    Logger.debug(__name__, "bounce_transaction_before_approval", "00", "Received request to bounce cheque transaction [%s]", request_data)
+    comment = request_data['comment'].strip()
+
+    # Get transaction details
+    Logger.debug(__name__, "bounce_transaction_before_approval", "00", "Finding details for transaction [%s]" % transaction_id)
+    transaction_data = TransactionService.get_by_id(transaction_id)
+    if transaction_data is None:
+        Logger.warn(__name__, "bounce_transaction_before_approval", "01", "Transaction [%s] does not exist" % transaction_id)
+        return JsonResponse.failed('Transaction not found')
+    if transaction_data['customer_status'] is not None or transaction_data['bank_status'] != BankStatus.INITIATED.value:
+        Logger.warn(__name__, "bounce_transaction_before_approval", "01",
+                    "Transaction [%s] cannot be bounced. CustomerStatus: [%s] BankStatus: [%s]"
+                    % (transaction_id, transaction_data['customer_status'], transaction_data['bank_status']))
+        return JsonResponse.failed('Transaction cannot be bounced')
+    Logger.info(__name__, "bounce_transaction_before_approval", "00", "Transaction [%s] found" % transaction_id)
+
+    # Update transaction accordingly
+    Logger.debug(__name__, "bounce_transaction_before_approval", "00", "Updating transaction [%s] to bounced" % transaction_id)
+    transaction_update = {
+        'bank_status': BankStatus.BOUNCED.value,
+        'bank_remarks': comment
+    }
+    try:
+        updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
+        Logger.info(__name__, "bounce_transaction_before_approval", "00", "Transaction [%s] bounced successfully!" % transaction_id)
+    except Exception as ex:
+        Logger.error(__name__, "bounce_transaction_before_approval", "02", "Could not update transaction [%s] to BOUNCED: %s" % (transaction_id, ex))
+        return JsonResponse.server_error('Bouncing cheque failed')
+
+    resp_data = {
+        'id': updated_transaction_data['id'],
+        'customer_status': updated_transaction_data['customer_status'],
+        'bank_status': updated_transaction_data['bank_status']
+    }
+    return JsonResponse.success(msg='Cheque bounced successfully!', data=resp_data)
 
 
 @api.route('/v1/transactions/<transaction_id>/request-approval', methods=['POST'])
@@ -382,6 +579,12 @@ def send_approval_request(transaction_id):
             Logger.warn(__name__, "send_approval_request", "01", "Updating transaction [%s] with approval_sms_sent status failed: %s" % (transaction_id, ex))
     else:
         Logger.warn(__name__, "send_approval_request", "00", "Sending cheque approval SMS to [%s] failed" % msisdn)
+
+    # Setup to remind if not approved after 15 minutes
+    remind_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
+    expire_at = datetime.datetime.now() + datetime.timedelta(hours=24)
+    Scheduler.send_approval_reminder.apply_async(args=[transaction_data['id']], eta=remind_at)
+    Scheduler.expire_cheque_pending_customer.apply_async(args=[transaction_data['id']], eta=expire_at)
 
     resp_msg = 'Request to approve cheque sent to %s' % msisdn
     resp_data = {
@@ -641,13 +844,13 @@ def get_approved_transactions():
 
     # Filter transactions by account number
     Logger.debug(__name__, "get_approved_transactions", "00", "Getting approved transactions for branch [%s]" % branch, params)
-    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date')}
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date')}
     transaction_filter = {
         **allowed_filters,
         'institution': institution,
         'processed_branch': branch,
         'customer_status': CustomerStatus.APPROVED.value,
-        'bank_status': BankStatus.PENDING_BANK_APPROVAL.value,
+        'bank_status__in': [BankStatus.PENDING_BANK_APPROVAL.value, BankStatus.PENDING_PAYMENT_APPROVAL.value],
         'payment_status': PaymentStatus.UNPAID.value
     }
     try:
@@ -656,6 +859,43 @@ def get_approved_transactions():
     except Exception:
         Logger.error(__name__, "get_approved_transactions", "02", "Could not get approved transactions for branch [%s]" % branch)
         return JsonResponse.server_error('Could not get approved transactions')
+
+    return JsonResponse.success(data=transaction_list, nav=nav)
+
+
+@api.route('/v1/transactions/pending-payment-approval', methods=['GET'])
+def get_cheques_pending_payment():
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    institution = admin_data['institution']['short_name']
+    branch = admin_data['branch']['branch_id']
+
+    params = request.args.to_dict()
+    minimal = False
+    paginate = True
+
+    if 'minimal' in params:
+        minimal = params.pop('minimal').lower() == 'true'
+    if 'paginate' in params:
+        paginate = params.pop('paginate').lower() != 'false'
+
+    # Filter transactions by account number
+    Logger.debug(__name__, "get_cheques_pending_payment", "00", "Getting transactions pending payment approval for branch [%s]" % branch, params)
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date')}
+    transaction_filter = {
+        **allowed_filters,
+        'institution': institution,
+        'processed_branch': branch,
+        'customer_status': CustomerStatus.APPROVED.value,
+        'bank_status': BankStatus.PENDING_PAYMENT_APPROVAL.value,
+        'payment_status': PaymentStatus.UNPAID.value
+    }
+    try:
+        transaction_list, nav = TransactionService.find_transactions(paginate=paginate, **transaction_filter)
+        Logger.info(__name__, "get_cheques_pending_payment", "00", "Found %s transaction(s) pending payment approval for branch [%s]" % (nav.get('total_records'), branch))
+    except Exception:
+        Logger.error(__name__, "get_cheques_pending_payment", "02", "Could not get transactions pending payment approval for branch [%s]" % branch)
+        return JsonResponse.server_error('Could not get transactions pending payment approval')
 
     return JsonResponse.success(data=transaction_list, nav=nav)
 
@@ -706,6 +946,43 @@ def post_customer_approval_update(transaction_id):
     return JsonResponse.success(msg=resp_msg, data=resp_data)
 
 
+@api.route('/v1/transactions/payment-approved', methods=['GET'])
+def get_payment_approved_cheques():
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    institution = admin_data['institution']['short_name']
+    branch = admin_data['branch']['branch_id']
+
+    params = request.args.to_dict()
+    minimal = False
+    paginate = True
+
+    if 'minimal' in params:
+        minimal = params.pop('minimal').lower() == 'true'
+    if 'paginate' in params:
+        paginate = params.pop('paginate').lower() != 'false'
+
+    # Filter transactions by account number
+    Logger.debug(__name__, "get_payment_approved_cheques", "00", "Getting payment-approved transactions for branch [%s]" % branch, params)
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date')}
+    transaction_filter = {
+        **allowed_filters,
+        'institution': institution,
+        'processed_branch': branch,
+        'customer_status': CustomerStatus.APPROVED.value,
+        'bank_status': BankStatus.PAYMENT_APPROVED.value,
+        'payment_status': PaymentStatus.UNPAID.value
+    }
+    try:
+        transaction_list, nav = TransactionService.find_transactions(paginate=paginate, **transaction_filter)
+        Logger.info(__name__, "get_payment_approved_cheques", "00", "Found %s payment-approved transaction(s) for branch [%s]" % (nav.get('total_records'), branch))
+    except Exception:
+        Logger.error(__name__, "get_payment_approved_cheques", "02", "Could not get payment-approved transactions for branch [%s]" % branch)
+        return JsonResponse.server_error('Could not get transactions approved to be paid')
+
+    return JsonResponse.success(data=transaction_list, nav=nav)
+
+
 @api.route('/v1/transactions/<transaction_id>/confirm-payout', methods=['POST'])
 @api_request.json
 @api_request.required_body_params('payout_type')
@@ -728,11 +1005,11 @@ def confirm_payout(transaction_id):
                     "Transaction [%s] has not been approved by customer. CustomerStatus: [%s] BankStatus: [%s]"
                     % (transaction_id, transaction_data['customer_status'], transaction_data['bank_status']))
         return JsonResponse.failed('Transaction not approved by customer')
-    if transaction_data['bank_status'] != BankStatus.PENDING_PAYMENT_APPROVAL.value:
+    if transaction_data['bank_status'] != BankStatus.PAYMENT_APPROVED.value:
         Logger.warn(__name__, "confirm_payout", "01",
                     "Transaction [%s] not pending bank payment approval. CustomerStatus: [%s] BankStatus: [%s]"
                     % (transaction_id, transaction_data['customer_status'], transaction_data['bank_status']))
-        return JsonResponse.failed('Transaction not pending payment approval')
+        return JsonResponse.failed('Payment has not been approved for this transaction')
 
     # Validate payout type
     if payout_type not in PayoutType.values():

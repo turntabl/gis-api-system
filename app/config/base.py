@@ -57,6 +57,13 @@ class BaseConfig(object):
     MONGODB_USERNAME = ""
     MONGODB_PASSWORD = ""
 
+    # RabbitMQ Configuration
+    RABBITMQ_HOST = 'localhost'
+    RABBITMQ_PORT = 5672
+    RABBITMQ_USERNAME = 'guest'
+    RABBITMQ_PASSWORD = 'guest'
+    AMQP_URL = 'amqp://{}:{}@{}:{}/%2F'.format(RABBITMQ_USERNAME, RABBITMQ_PASSWORD, RABBITMQ_HOST, RABBITMQ_PORT)
+
     # LOGSTASH_HOST = "stats.nsano.com"
     LOGSTASH_HOST = "127.0.0.1"
     LOGSTASH_PORT = 7000
@@ -100,5 +107,6 @@ class BaseConfig(object):
     SEND_SMS_URL = 'https://mysms.nsano.com/api/v1/sms/single'
     SMS_API_KEY = '610821a7152b390255eb765450e8d000'
 
-    SMS_SENDER = 'PayPrompt'
+    SMS_SENDER = 'PAYPROMPT'
     CHEQUE_APPROVAL_SMS = 'Dear customer, you have a request to approve this cheque. Dial *XXX*XX# to approve/decline.'
+    CHEQUE_CANCEL_SMS = 'Dear customer, your cheque XXXXXX linked to account XXXXXXXXXXXXX has been cancelled.'

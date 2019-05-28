@@ -2,6 +2,7 @@
 
 import os
 
+from celery import Celery
 from flask import Flask
 from flask import jsonify
 from flask import send_from_directory
@@ -21,6 +22,23 @@ app.config['MONGODB_PASSWORD'] = config.MONGODB_PASSWORD
 
 # Setup DB
 db = MongoEngine(app)
+
+
+def make_celery(app_):
+    celery_ = Celery(app_.import_name, broker=config.AMQP_URL)
+    celery_.conf.update(app_.config)
+
+    class ContextTask(celery_.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery_.Task = ContextTask
+    return celery_
+
+
+# Configure celery scheduler
+celery = make_celery(app)
 
 from app.controllers import api
 
