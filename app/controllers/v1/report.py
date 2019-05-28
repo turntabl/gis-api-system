@@ -30,14 +30,13 @@ def get_cheques():
 
     # Filter transactions
     Logger.debug(__name__, "get_cheques", "00", "Getting transactions for branch [%s]" % branch, params)
-    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date')}
-    transaction_filter = {
-        **allowed_filters,
-        'institution': institution,
-        'processed_branch': branch
-    }
+    # allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date', 'page', 'size')}
+    params['institution'] = institution
+    if branch != 'ALL':
+        params['processed_branch'] = branch
+
     try:
-        transaction_list, nav = TransactionService.find_transactions(paginate=paginate, **transaction_filter)
+        transaction_list, nav = TransactionService.find_transactions(paginate=paginate, **params)
         Logger.info(__name__, "get_cheques", "00", "Found %s transaction(s) for branch [%s]" % (nav.get('total_records'), branch), params)
     except Exception:
         Logger.error(__name__, "get_cheques", "02", "Could not get bounced transactions for branch [%s]" % branch, params)
@@ -64,7 +63,7 @@ def get_bounced_cheques():
 
     # Filter transactions
     Logger.debug(__name__, "get_bounced_cheques", "00", "Getting bounced transactions for branch [%s]" % branch, params)
-    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date')}
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date', 'page', 'size')}
     transaction_filter = {
         **allowed_filters,
         'institution': institution,

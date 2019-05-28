@@ -182,7 +182,7 @@ def get_session():
 
 
 @api.route('/v1/users/notification/resend', methods=['POST'])
-@api_request.admin_authenticate
+# @api_request.admin_authenticate
 @api_request.json
 @api_request.required_body_params('username')
 def resend_new_user_notification():

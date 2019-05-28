@@ -808,7 +808,7 @@ def get_pre_approved_transactions():
 
     # Filter transactions by account number
     Logger.debug(__name__, "get_pre_approved_transactions", "00", "Getting pre-approved transactions", params)
-    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date')}
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'cheque_number', 'start_date', 'end_date', 'page', 'size')}
     transaction_filter = {
         **allowed_filters,
         'pre_approved': True,
@@ -844,7 +844,7 @@ def get_approved_transactions():
 
     # Filter transactions by account number
     Logger.debug(__name__, "get_approved_transactions", "00", "Getting approved transactions for branch [%s]" % branch, params)
-    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date')}
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date', 'page', 'size')}
     transaction_filter = {
         **allowed_filters,
         'institution': institution,
@@ -881,7 +881,7 @@ def get_cheques_pending_payment():
 
     # Filter transactions by account number
     Logger.debug(__name__, "get_cheques_pending_payment", "00", "Getting transactions pending payment approval for branch [%s]" % branch, params)
-    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date')}
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date', 'page', 'size')}
     transaction_filter = {
         **allowed_filters,
         'institution': institution,
@@ -964,7 +964,7 @@ def get_payment_approved_cheques():
 
     # Filter transactions by account number
     Logger.debug(__name__, "get_payment_approved_cheques", "00", "Getting payment-approved transactions for branch [%s]" % branch, params)
-    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date')}
+    allowed_filters = {key: params[key] for key in params if key in ('account_number', 'msisdn', 'pre_approved', 'cheque_number', 'start_date', 'end_date', 'page', 'size')}
     transaction_filter = {
         **allowed_filters,
         'institution': institution,

@@ -4,6 +4,7 @@ import datetime
 import traceback
 
 from app.config import config
+from app.errors.errors import NotFoundError
 from app.libs.logger import Logger
 from app.models.role import AdminPrivileges
 from app.models.role import BranchPrivileges
@@ -64,7 +65,7 @@ class RoleService:
                         report_priv.admin_report = module_priv_map.get('admin_report') or False
                         report_priv.branch_report = module_priv_map.get('branch_report') or False
                         report_priv.transaction_report = module_priv_map.get('transaction_report') or False
-                        privileges.transaction = report_priv
+                        privileges.report = report_priv
 
             role_data.privileges = privileges
             role_data.save()
@@ -148,3 +149,67 @@ class RoleService:
         except Exception as ex:
             Logger.error(__name__, "find_roles", "02", "Error while finding roles", traceback.format_exc())
             raise ex
+
+    @staticmethod
+    def update_role(uid, update_data):
+        try:
+            role_data = Role.objects(id=uid).first()
+            if role_data is None:
+                Logger.warn(__name__, "update_role", "01", "Role [{}] not found".format(uid))
+                raise NotFoundError('Role not found')
+
+            if 'name' in update_data:
+                role_data.name = update_data['name'].strip()
+            if 'privileges' in update_data:
+                # Build privileges
+                privileges = Privileges()
+                for module in update_data['privileges']:
+                    module_priv_map = update_data['privileges'][module]
+                    if module == 'dashboard':
+                        dashboard_priv = DashboardPrivileges()
+                        dashboard_priv.view_dashboard = module_priv_map.get('view_dashboard') or False
+                        privileges.dashboard = dashboard_priv
+                    elif module == 'admin':
+                        admin_priv = AdminPrivileges()
+                        admin_priv.add_admin = module_priv_map.get('add_admin') or False
+                        admin_priv.view_admin = module_priv_map.get('view_admin') or False
+                        admin_priv.update_admin = module_priv_map.get('update_admin') or False
+                        privileges.admin = admin_priv
+                    elif module == 'roles':
+                        roles_priv = RolePrivileges()
+                        roles_priv.add_role = module_priv_map.get('add_role') or False
+                        roles_priv.view_role = module_priv_map.get('view_role') or False
+                        roles_priv.update_role = module_priv_map.get('update_role') or False
+                        privileges.roles = roles_priv
+                    elif module == 'branch':
+                        branch_priv = BranchPrivileges()
+                        branch_priv.add_branch = module_priv_map.get('add_branch') or False
+                        branch_priv.view_branch = module_priv_map.get('view_branch') or False
+                        branch_priv.update_branch = module_priv_map.get('update_branch') or False
+                        privileges.branch = branch_priv
+                    elif module == 'transaction':
+                        transaction_priv = TransactionPrivileges()
+                        transaction_priv.initiate_cheque = module_priv_map.get('initiate_cheque') or False
+                        transaction_priv.approve_cheque = module_priv_map.get('approve_cheque') or False
+                        transaction_priv.pay_cheque = module_priv_map.get('pay_cheque') or False
+                        privileges.transaction = transaction_priv
+                    elif module == 'report':
+                        report_priv = ReportPrivileges()
+                        report_priv.admin_report = module_priv_map.get('admin_report') or False
+                        report_priv.branch_report = module_priv_map.get('branch_report') or False
+                        report_priv.transaction_report = module_priv_map.get('transaction_report') or False
+                        privileges.report = report_priv
+
+                role_data.privileges = privileges
+
+            role_data.modified_at = datetime.datetime.utcnow()  # TODO: Auto-set modified_at on update(with on_update)
+            role_data.save()
+            role = role_data.to_dict()
+        except KeyError as kex:
+            Logger.error(__name__, "update_role", "02", "KeyError: {}".format(str(kex)), traceback.format_exc())
+            raise kex
+        except Exception as ex:
+            Logger.error(__name__, "update_role", "02", "Exception occurred: {}".format(str(ex)), traceback.format_exc())
+            raise ex
+
+        return role

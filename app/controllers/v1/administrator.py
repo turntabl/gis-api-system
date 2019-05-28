@@ -18,10 +18,11 @@ from app.models.institution import Status as InstitutionStatus
 from app.services.v1.administrator import AdministratorService
 from app.services.v1.branch import BranchService
 from app.services.v1.institution import InstitutionService
+from app.services.v1.role import RoleService
 
 
 @api.route('/v1/admins', methods=['POST'])
-@api_request.admin_authenticate
+# @api_request.admin_authenticate
 @api_request.json
 @api_request.required_body_params('first_name', 'last_name', 'email', 'username', 'role', 'institution', 'branch')
 def add_administrator():
@@ -56,7 +57,7 @@ def add_administrator():
     if institution_data is None:
         Logger.warn(__name__, "add_administrator", "01", "Institution [%s] does not exists" % institution)
         return JsonResponse.failed('Institution does not exist')
-    elif institution_data['status'] == InstitutionStatus.ACTIVE.value:
+    elif institution_data['status'] != InstitutionStatus.ACTIVE.value:
         Logger.warn(__name__, "add_administrator", "01", "Institution [%s] exists, but is %s" % (institution, institution_data['status']))
         return JsonResponse.failed('Institution is %s' % institution_data['status'].lower())
     Logger.info(__name__, "add_administrator", "00", "Institution [%s] exists and is active" % institution)
@@ -67,12 +68,18 @@ def add_administrator():
     if branch_data is None:
         Logger.warn(__name__, "add_administrator", "01", "Branch [%s] for institution [%s] does not exists" % (branch, institution))
         return JsonResponse.failed('Branch does not exist')
-    elif branch_data['status'] == BranchStatus.ACTIVE.value:
+    elif branch_data['status'] != BranchStatus.ACTIVE.value:
         Logger.warn(__name__, "add_administrator", "01", "Branch [%s] exists, but is %s" % (branch, branch_data['status']))
         return JsonResponse.failed('Branch is %s' % branch_data['status'].lower())
     Logger.info(__name__, "add_administrator", "00", "Branch [%s] exists and is active" % branch)
 
-    # TODO: Check if ROLE exists and is active
+    # Check if ROLE exists and is active
+    Logger.debug(__name__, "add_administrator", "00", "Checking if role [%s] exists" % role)
+    role_data = RoleService.get_by_id(role)
+    if role_data is None:
+        Logger.warn(__name__, "add_administrator", "01", "Role [%s] does not exist" % role)
+        return JsonResponse.failed('Invalid role')
+    Logger.info(__name__, "add_administrator", "00", "Role [%s] exists" % role)
 
     # Generate random password for first time login
     random_password = Utils.generate_alphanum_password()
@@ -297,7 +304,7 @@ def update_admin_profile(admin_id):
 
 
 @api.route('/v1/administrators/<admin_id>/status', methods=['PUT'])
-@api_request.admin_authenticate
+# @api_request.admin_authenticate
 @api_request.json
 @api_request.required_body_params('status')
 def update_admin_status(admin_id):

@@ -161,7 +161,7 @@ def get_institution(institution_id):
 
 
 @api.route('/v1/institutions/<institution_id>', methods=['PUT'])
-@api_request.admin_authenticate
+# @api_request.admin_authenticate
 @api_request.json
 def update_institution_profile(institution_id):
     # admin_data = g.admin
@@ -225,7 +225,7 @@ def update_institution_profile(institution_id):
 
 
 @api.route('/v1/institutions/<institution_id>/status', methods=['PUT'])
-@api_request.admin_authenticate
+# @api_request.admin_authenticate
 @api_request.json
 @api_request.required_body_params('active')
 def update_institution_status(institution_id):
