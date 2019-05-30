@@ -83,7 +83,7 @@ class InstitutionService:
             if 'status' in update_data:
                 institution_data.status = update_data['status'].strip()
 
-            institution_data.modified_at = datetime.datetime.utcnow()  # TODO: Auto-set updated_at on update(with on_update)
+            institution_data.modified_at = datetime.datetime.utcnow()  # TODO: Auto-set modified_at on update(with on_update)
             institution_data.save()
             institution = institution_data.to_dict()
         except KeyError as kex:

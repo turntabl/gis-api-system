@@ -22,7 +22,8 @@ class TransactionService:
             transaction_data = Transaction()
             transaction_data.cheque_number = data['cheque_number'].strip()
             transaction_data.account_number = data['account_number'].strip()
-            transaction_data.msisdn = data['msisdn']
+            if 'msisdn' in data:
+                transaction_data.msisdn = data['msisdn']
             transaction_data.payee_name = data['payee_name'].strip()
             transaction_data.currency = data['currency'].strip()
             transaction_data.amount = Decimal(data['amount'])

@@ -280,3 +280,7 @@ class DateUtils:
     @staticmethod
     def format_datetime(date_obj):
         return datetime.datetime.strftime(date_obj, DATETIME_FORMAT)
+
+    @staticmethod
+    def parse_datetime(datetime_str):
+        return datetime.datetime.strptime(datetime_str, DATETIME_FORMAT)

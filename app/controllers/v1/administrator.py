@@ -110,58 +110,6 @@ def add_administrator():
     return JsonResponse.success(data=new_admin_data)
 
 
-@api.route('/v1/administrators/setup', methods=['POST'])
-@api_request.json
-@api_request.required_body_params('username', 'old_password', 'new_password')
-def setup_new_admin():
-    # Get request data
-    request_data = json.loads(request.data.decode('utf-8'))
-    Logger.debug(__name__, "setup_new_admin", "00", "Received request to add setup inactive admin [%s]" % request_data['username'])
-
-    username = request_data['username'].strip()
-    old_password = request_data['old_password'].strip()
-    new_password = request_data['new_password'].strip()
-
-    # Get administrator by username
-    Logger.debug(__name__, "setup_new_admin", "00", "Getting administrator [%s]" % username)
-    admin_data = AdministratorService.find_by_username_password(username, old_password)
-    if admin_data is None:
-        Logger.warn(__name__, "setup_new_admin", "01", "Invalid user [%s] and/or password" % username)
-        return JsonResponse.failed('Invalid username and/or password')
-    elif admin_data['status'] != AdminStatus.INACTIVE.value:
-        Logger.warn(__name__, "setup_new_admin", "01", "Admin [%s] is not a new user. Status: [%s]" % (username, admin_data['status']))
-        return JsonResponse.failed('Account has already been confirmed')
-
-    # Check if password satisfies policy
-    try:
-        Utils.password_satisfies_policy(new_password)
-    except InputError as ie:
-        Logger.warn(__name__, "setup_new_admin", "01", "User failed policy check: %s" % ie.message)
-        return JsonResponse.failed(ie.message)
-
-    # Update user password and set status to ACTIVE
-    hashed_password = Utils.hash_password(new_password)
-
-    # Check if old_password is the same as new_password
-    if old_password == new_password:
-        Logger.warn(__name__, "setup_new_admin", "01", "Old password cannot be the same as new password")
-        return JsonResponse.failed('New password cannot be the same as the old one')
-
-    # Save password and save login session token
-    admin_update = {
-        'password': hashed_password,
-        'status': AdminStatus.ACTIVE.value,
-        'session_token': Utils.generate_session_token()
-    }
-    try:
-        admin_data = AdministratorService.update_administrator(admin_data['id'], admin_update)
-    except Exception as ex:
-        Logger.warn(__name__, "setup_new_admin", "01", "Updating admin [%s] password failed: %s" % (username, ex))
-        return JsonResponse.failed('Password could not be updated')
-
-    return JsonResponse.success(msg='Admin setup successful!', data=admin_data)
-
-
 @api.route('/v1/administrators', methods=['GET'])
 @api_request.user_authenticate
 def get_administrators():

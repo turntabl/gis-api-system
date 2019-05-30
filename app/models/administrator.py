@@ -5,7 +5,9 @@ import enum
 
 from app.application import db
 from app.libs.utils import DateUtils
+from app.services.v1.branch import BranchService
 from app.services.v1.institution import InstitutionService
+from app.services.v1.role import RoleService
 
 
 class Status(enum.Enum):
@@ -77,8 +79,12 @@ class Administrator(db.Document):
         dict_obj = {}
         for column, value in self._fields.items():
             if column == "institution":
-                dict_obj[column] = InstitutionService.get_by_id(getattr(self, column))
-            elif column in ("created_at", "modified_at", "last_login_at", "password_last_changed_at"):
+                dict_obj[column] = InstitutionService.get_by_id(getattr(self, column), minimal=True)
+            elif column == "branch":
+                dict_obj[column] = BranchService.get_by_branch_id(getattr(self, column), minimal=True)
+            elif column == "role":
+                dict_obj[column] = RoleService.get_by_id(getattr(self, column), minimal=True)
+            elif column in ("created_at", "modified_at", "last_login_date", "password_last_changed_at"):
                 dict_obj[column] = DateUtils.format_datetime(getattr(self, column)) if getattr(self, column) is not None else None
             elif column == 'password':
                 if include_password:

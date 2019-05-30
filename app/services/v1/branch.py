@@ -88,7 +88,7 @@ class BranchService:
             if 'status' in update_data:
                 branch_data.status = update_data['status'].strip()
 
-            branch_data.modified_at = datetime.datetime.utcnow()  # TODO: Auto-set updated_at on update(with on_update)
+            branch_data.modified_at = datetime.datetime.utcnow()  # TODO: Auto-set modified_at on update(with on_update)
             branch_data.save()
             branch = branch_data.to_dict()
         except KeyError as kex:

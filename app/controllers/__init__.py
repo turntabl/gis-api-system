@@ -55,6 +55,7 @@ class JsonResponse:
         return jsonify(code='23', msg=msg)
 
 
+from app.controllers.v1 import auth
 from app.controllers.v1 import institution
 from app.controllers.v1 import branch
 from app.controllers.v1 import administrator
@@ -66,4 +67,4 @@ from app.controllers.v1 import transaction
 
 @api.route('/', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def api_base():
-    return jsonify(code='00', msg='Nsano SSO Entry', data={})
+    return jsonify(code='00', msg='PayPrompt Entry', data={})

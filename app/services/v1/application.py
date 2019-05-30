@@ -81,7 +81,7 @@ class ApplicationService:
             if 'active' in update_data:
                 application_data.active = update_data['active']
 
-            application_data.modified_at = datetime.datetime.utcnow()  # TODO: Auto-set updated_at on update(with on_update)
+            application_data.modified_at = datetime.datetime.utcnow()  # TODO: Auto-set modified_at on update(with on_update)
             application_data.save()
             application = application_data.to_dict()
         except KeyError as kex:

@@ -72,7 +72,7 @@ class Institution(db.Document):
             dict_obj['status'] = self.status
         else:
             for column, value in self._fields.items():
-                if column in('created_at', 'updated_at'):
+                if column in('created_at', 'modified_at'):
                     dict_obj[column] = DateUtils.format_datetime(getattr(self, column)) if getattr(self, column) is not None else None
                 else:
                     dict_obj[column] = getattr(self, column)
