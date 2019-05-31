@@ -133,6 +133,8 @@ class TransactionService:
                 transaction_data.msisdn = update_data['msisdn']
             if 'customer_name' in update_data:
                 transaction_data.customer_name = update_data['customer_name'].strip()
+            if 'payee_name' in update_data:
+                transaction_data.payee_name = update_data['payee_name'].strip()
             if 'balance' in update_data:
                 transaction_data.balance = update_data['balance']
             if 'mandate' in update_data:
@@ -163,6 +165,8 @@ class TransactionService:
                 transaction_data.payment_status = update_data['payment_status']
             if 'cheque_resubmission_flag' in update_data:
                 transaction_data.cheque_resubmission_flag = update_data['cheque_resubmission_flag']
+            if 'approved_by' in update_data:
+                transaction_data.approved_by = update_data['approved_by']
             if 'paid_by' in update_data:
                 transaction_data.paid_by = update_data['paid_by']
             if 'payout_type' in update_data:

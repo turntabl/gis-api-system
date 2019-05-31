@@ -184,7 +184,8 @@ class ApiRequest:
                 action = permissions.split('.')[1]
 
                 try:
-                    role = RoleService.get_by_id(user_data['role'])
+                    # role = RoleService.get_by_id(user_data['role'])
+                    role = user_data['role']
                     if role is None:
                         Logger.warn(__name__, "user_authenticate", "01", "Role [%s] not found" % user_data['role'])
                         return jsonify(code='04', msg='Role not found')

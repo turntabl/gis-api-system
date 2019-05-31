@@ -42,14 +42,14 @@ def initiate_transaction():
         return JsonResponse.bad_request('Cheque number should be a string')
     if not cheque_number.isdigit() or len(cheque_number) != 6:
         Logger.warn(__name__, "initiate_transaction", "01", "Cheque number is not digits only or has more than 6 digits")
-        return JsonResponse.bad_request('Cheque number should have exactly 6 digits')
+        return JsonResponse.bad_request('Cheque number should be exactly 6 digits')
 
     if not isinstance(account_number, str):
         Logger.warn(__name__, "initiate_transaction", "01", "Account number is not a string. Type: [%s]" % type(account_number))
         return JsonResponse.bad_request('Account number should be a string')
     if not account_number.isdigit() or len(account_number) < 9 or len(account_number) > 13:
         Logger.warn(__name__, "initiate_transaction", "01", "Account number is not digits only or has less than 9 or more than 13 digits")
-        return JsonResponse.bad_request('Account number should have between 9 to 13 digits')
+        return JsonResponse.bad_request('Account number should be between 9 to 13 digits')
 
     try:
         decimal_amount = float(amount)
@@ -152,14 +152,14 @@ def pre_approve_cheque():
         return JsonResponse.bad_request('Cheque number should be a string')
     if not cheque_number.isdigit() or len(cheque_number) != 6:
         Logger.warn(__name__, "pre_approve_cheque", "01", "Cheque number is not digits only or has more than 6 digits")
-        return JsonResponse.bad_request('Cheque number should have exactly 6 digits')
+        return JsonResponse.bad_request('Cheque number should be exactly 6 digits')
 
     if not isinstance(account_number, str):
         Logger.warn(__name__, "pre_approve_cheque", "01", "Account number is not a string. Type: [%s]" % type(account_number))
         return JsonResponse.bad_request('Account number should be a string')
     if not account_number.isdigit() or len(account_number) < 9 or len(account_number) > 13:
         Logger.warn(__name__, "pre_approve_cheque", "01", "Account number is not digits only or has less than 9 or more than 13 digits")
-        return JsonResponse.bad_request('Account number should have between 9 to 13 digits')
+        return JsonResponse.bad_request('Account number should be between 9 to 13 digits')
 
     try:
         long_msisdn = int(msisdn)
@@ -259,7 +259,7 @@ def pre_approve_cheque():
 
 @api.route('/v1/transactions/<transaction_id>/pre-approved/process', methods=['POST'])
 @api_request.json
-@api_request.required_body_params('name', 'msisdn', 'balance', 'mandate', 'cheque_instructions')
+@api_request.required_body_params('name', 'balance', 'mandate', 'cheque_instructions', 'payee_name')
 def process_pre_approved_cheque(transaction_id):
     # admin_data = g.admin
     admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
@@ -268,10 +268,10 @@ def process_pre_approved_cheque(transaction_id):
     request_data = json.loads(request.data.decode('utf-8'))
     Logger.debug(__name__, "process_pre_approved_cheque", "00", "Received request to complete transaction initiation", request_data)
     name = request_data['name'].strip()
-    msisdn = request_data['msisdn']
     balance = request_data['balance']
     mandate = request_data['mandate'].strip()
     cheque_instructions = request_data['cheque_instructions'].strip()
+    payee_name = request_data['payee_name'].strip()
 
     if not isinstance(name, str):
         Logger.warn(__name__, "process_pre_approved_cheque", "01", "Name is not a string. Type: [%s]" % type(name))
@@ -282,12 +282,6 @@ def process_pre_approved_cheque(transaction_id):
     except ValueError:
         Logger.warn(__name__, "process_pre_approved_cheque", "01", "Balance is not a decimal. Type: [%s]" % type(balance))
         return JsonResponse.bad_request('Balance should be a decimal')
-
-    try:
-        long_msisdn = int(msisdn)
-    except ValueError:
-        Logger.warn(__name__, "process_pre_approved_cheque", "01", "Msisdn is not a number. Type: [%s]" % type(msisdn))
-        return JsonResponse.bad_request('Msisdn should be a number')
 
     if not isinstance(mandate, str):
         Logger.warn(__name__, "process_pre_approved_cheque", "01", "Mandate is not a string. Type: [%s]" % type(mandate))
@@ -314,7 +308,9 @@ def process_pre_approved_cheque(transaction_id):
         'balance': decimal_balance,
         'mandate': mandate,
         'cheque_instructions': cheque_instructions,
-        'bank_status': BankStatus.PENDING_BANK_APPROVAL.value
+        'payee_name': payee_name,
+        'bank_status': BankStatus.PAYMENT_APPROVED.value,
+        'approved_by': admin_data['username']
     }
     try:
         updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
@@ -605,7 +601,7 @@ def get_pending_approvals_for_account(account_number):
         return JsonResponse.bad_request('Account number should be a string')
     if not account_number.isdigit() or len(account_number) < 9 or len(account_number) > 13:
         Logger.warn(__name__, "get_pending_approvals_for_account", "01", "Account number is not digits only or has less than 9 or more than 13 digits")
-        return JsonResponse.bad_request('Account number should have between 9 to 13 digits')
+        return JsonResponse.bad_request('Account number should be between 9 to 13 digits')
 
     # Filter transactions by account number
     Logger.debug(__name__, "get_pending_approvals_for_account", "00", "Getting pending approvals for account [%s]" % account_number)
@@ -665,7 +661,7 @@ def get_cheque_history(account_number, cheque_number):
         return JsonResponse.bad_request('Account number should be a string')
     if not account_number.isdigit() or len(account_number) < 9 or len(account_number) > 13:
         Logger.warn(__name__, "get_cheque_history", "01", "Account number is not digits only or has less than 9 or more than 13 digits")
-        return JsonResponse.bad_request('Account number should have between 9 to 13 digits')
+        return JsonResponse.bad_request('Account number should be between 9 to 13 digits')
 
     # Validate cheque number
     if not isinstance(cheque_number, str):
@@ -673,7 +669,7 @@ def get_cheque_history(account_number, cheque_number):
         return JsonResponse.bad_request('Cheque number should be a string')
     if not cheque_number.isdigit() or len(cheque_number) != 6:
         Logger.warn(__name__, "initiate_transaction", "01", "Cheque number is not digits only or has more than 6 digits")
-        return JsonResponse.bad_request('Cheque number should have exactly 6 digits')
+        return JsonResponse.bad_request('Cheque number should be exactly 6 digits')
 
     # Filter transactions by account number and cheque_id
     Logger.debug(__name__, "get_cheque_history", "00", "Getting history for cheque [%s]" % cheque_code)
@@ -904,6 +900,8 @@ def get_cheques_pending_payment():
 @api_request.json
 @api_request.required_body_params('status')
 def post_customer_approval_update(transaction_id):
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
     status = request_data['status'].strip()
@@ -926,7 +924,8 @@ def post_customer_approval_update(transaction_id):
     Logger.debug(__name__, "post_customer_approval_update", "00", "Updating transaction [%s] bank status to %s" % (transaction_id, status))
     transaction_update = {
         'bank_status': status,
-        'bank_remarks': comment
+        'bank_remarks': comment,
+        'approved_by': admin_data['username']
     }
     try:
         updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
@@ -937,13 +936,12 @@ def post_customer_approval_update(transaction_id):
 
     # TODO: Send approval/decline notification to portal
 
-    resp_msg = 'Transaction %s successfully!' % status.lower()
     resp_data = {
         'id': updated_transaction_data['id'],
         'customer_status': updated_transaction_data['customer_status'],
         'bank_status': updated_transaction_data['bank_status']
     }
-    return JsonResponse.success(msg=resp_msg, data=resp_data)
+    return JsonResponse.success(data=resp_data)
 
 
 @api.route('/v1/transactions/payment-approved', methods=['GET'])
