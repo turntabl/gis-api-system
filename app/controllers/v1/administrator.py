@@ -24,9 +24,10 @@ from app.services.v1.role import RoleService
 @api.route('/v1/admins', methods=['POST'])
 # @api_request.admin_authenticate
 @api_request.json
-@api_request.required_body_params('first_name', 'last_name', 'email', 'username', 'role', 'institution', 'branch')
+@api_request.required_body_params('first_name', 'last_name', 'email', 'username', 'role', 'branch')
 def add_administrator():
-    admin_data = g.admin
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -35,8 +36,9 @@ def add_administrator():
     email = request_data['email']
     username = request_data['username'].strip()
     role = request_data['role']
-    institution = request_data['institution']
     branch = request_data['branch']
+
+    institution_id = admin_data['institution']['id']
 
     # Validate username, make sure it doesn't already exist
     Logger.debug(__name__, "add_administrator", "00", "Checking if admin with username [%s] already exist" % username)
@@ -52,21 +54,21 @@ def add_administrator():
         return JsonResponse.bad_request('Invalid email address')
 
     # Check if institution exists and is active
-    Logger.debug(__name__, "add_administrator", "00", "Checking if institution [%s] exists" % institution)
-    institution_data = InstitutionService.get_by_id(institution, minimal=True)
+    Logger.debug(__name__, "add_administrator", "00", "Checking if institution [%s] exists" % institution_id)
+    institution_data = InstitutionService.get_by_id(institution_id, minimal=True)
     if institution_data is None:
-        Logger.warn(__name__, "add_administrator", "01", "Institution [%s] does not exists" % institution)
+        Logger.warn(__name__, "add_administrator", "01", "Institution [%s] does not exists" % institution_id)
         return JsonResponse.failed('Institution does not exist')
     elif institution_data['status'] != InstitutionStatus.ACTIVE.value:
-        Logger.warn(__name__, "add_administrator", "01", "Institution [%s] exists, but is %s" % (institution, institution_data['status']))
+        Logger.warn(__name__, "add_administrator", "01", "Institution [%s] exists, but is %s" % (institution_id, institution_data['status']))
         return JsonResponse.failed('Institution is %s' % institution_data['status'].lower())
-    Logger.info(__name__, "add_administrator", "00", "Institution [%s] exists and is active" % institution)
+    Logger.info(__name__, "add_administrator", "00", "Institution [%s] exists and is active" % institution_id)
 
     # Check if branch exists, and belongs to institution in request and is active
     Logger.debug(__name__, "add_administrator", "00", "Checking if branch [%s] exists" % branch)
-    branch_data = BranchService.get_institution_branch(institution, branch, minimal=True)
+    branch_data = BranchService.get_institution_branch(institution_id, branch, minimal=True)
     if branch_data is None:
-        Logger.warn(__name__, "add_administrator", "01", "Branch [%s] for institution [%s] does not exists" % (branch, institution))
+        Logger.warn(__name__, "add_administrator", "01", "Branch [%s] for institution [%s] does not exists" % (branch, institution_id))
         return JsonResponse.failed('Branch does not exist')
     elif branch_data['status'] != BranchStatus.ACTIVE.value:
         Logger.warn(__name__, "add_administrator", "01", "Branch [%s] exists, but is %s" % (branch, branch_data['status']))
@@ -111,10 +113,11 @@ def add_administrator():
 
 
 @api.route('/v1/administrators', methods=['GET'])
-@api_request.user_authenticate
+# @api_request.user_authenticate
 def get_administrators():
-    admin_data = g.admin
-    institution_data = admin_data['institution']
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    # institution_data = admin_data['institution']
 
     Logger.debug(__name__, "get_administrators", "00", "Received request to get administrators")
     params = request.args.to_dict()
@@ -189,10 +192,11 @@ def update_me():
 
 
 @api.route('/v1/administrators/<admin_id>', methods=['PUT'])
-@api_request.user_authenticate
+# @api_request.user_authenticate
 @api_request.json
 def update_admin_profile(admin_id):
-    admin_data = g.admin
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     institution_data = admin_data['institution']
 
     # Get request data

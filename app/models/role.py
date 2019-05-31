@@ -35,9 +35,8 @@ class TransactionPrivileges(db.EmbeddedDocument):
 
 
 class ReportPrivileges(db.EmbeddedDocument):
-    admin_report = db.BooleanField(required=True, default=False)
-    branch_report = db.BooleanField(required=True, default=False)
-    transaction_report = db.BooleanField(required=True, default=False)
+    view_report = db.BooleanField(required=True, default=False)
+    export_report = db.BooleanField(required=True, default=False)
 
 
 class Privileges(db.EmbeddedDocument):

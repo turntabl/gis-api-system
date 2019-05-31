@@ -116,7 +116,7 @@ class AdministratorService:
         try:
             query = {}
             for field, value in filter_parameters.items():
-                if field.split('__')[0] in Administrator._fields:
+                if field.split('__')[0] in Administrator._fields and value != '':
                     query[field] = value
 
             if 'size' not in filter_parameters:
@@ -126,15 +126,15 @@ class AdministratorService:
 
             Logger.debug(__name__, "find_administrators", "00", "Filter query: %s" % str(query))
 
-            if 'start_date' in filter_parameters and 'end_date' not in filter_parameters:
+            if filter_parameters.get('start_date') and not filter_parameters.get('end_date'):
                 administrator_data = Administrator.objects(
                     created_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d')) \
                     .filter(**query).order_by(order_by)
-            elif 'start_date'not in filter_parameters and 'end_date' in filter_parameters:
+            elif not filter_parameters.get('start_date') and filter_parameters.get('end_date'):
                 administrator_data = Administrator.objects(
                     created_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], "%Y-%m-%d") + datetime.timedelta(days=1)
                 ).filter(**query).order_by(order_by)
-            elif 'start_date' in filter_parameters and 'end_date' in filter_parameters:
+            elif filter_parameters.get('start_date') and filter_parameters.get('end_date'):
                 administrator_data = Administrator.objects(
                     created_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d'),
                     created_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], '%Y-%m-%d') + datetime.timedelta(days=1)

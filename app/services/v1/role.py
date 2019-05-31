@@ -62,9 +62,8 @@ class RoleService:
                         privileges.transaction = transaction_priv
                     elif module == 'report':
                         report_priv = ReportPrivileges()
-                        report_priv.admin_report = module_priv_map.get('admin_report') or False
-                        report_priv.branch_report = module_priv_map.get('branch_report') or False
-                        report_priv.transaction_report = module_priv_map.get('transaction_report') or False
+                        report_priv.view_report = module_priv_map.get('view_report') or False
+                        report_priv.export_report = module_priv_map.get('export_report') or False
                         privileges.report = report_priv
 
             role_data.privileges = privileges
@@ -195,9 +194,8 @@ class RoleService:
                         privileges.transaction = transaction_priv
                     elif module == 'report':
                         report_priv = ReportPrivileges()
-                        report_priv.admin_report = module_priv_map.get('admin_report') or False
-                        report_priv.branch_report = module_priv_map.get('branch_report') or False
-                        report_priv.transaction_report = module_priv_map.get('transaction_report') or False
+                        report_priv.view_report = module_priv_map.get('view_report') or False
+                        report_priv.export_report = module_priv_map.get('export_report') or False
                         privileges.report = report_priv
 
                 role_data.privileges = privileges
