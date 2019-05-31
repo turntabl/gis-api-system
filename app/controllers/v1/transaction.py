@@ -11,6 +11,7 @@ from app.controllers import api_request
 from app.controllers import JsonResponse
 from app.libs.logger import Logger
 from app.libs.scheduler import Scheduler
+from app.libs.utils import StringUtils
 from app.libs.utils import Utils
 from app.models.transaction import BankStatus
 from app.models.transaction import CustomerStatus
@@ -246,6 +247,18 @@ def pre_approve_cheque():
     has_account_details = False
     account_details = {}
 
+    # Send pre-approval confirmation SMS to msisdn
+    Logger.debug(__name__, "pre_approve_cheque", "00", "Sending pre-approval confirmation SMS to [%s]" % msisdn)
+    pre_approval_sms = StringUtils.render_template(config.PRE_APPROVAL_CONFIRMATION_SMS,
+                                                   account_number=account_number,
+                                                   cheque_number=cheque_number,
+                                                   amount='{:,.2f}'.format(amount))
+    sms_sent = Utils.send_sms(long_msisdn, pre_approval_sms)
+    if sms_sent:
+        Logger.info(__name__, "pre_approve_cheque", "00", "Pre-approval confirmation SMS sent to [%s]" % msisdn)
+    else:
+        Logger.warn(__name__, "pre_approve_cheque", "00", "Sending pre-approval confirmation SMS to [%s] failed" % msisdn)
+
     # Setup expiry if not processed after 48 hours
     expire_at = datetime.datetime.now() + datetime.timedelta(hours=48)
     Scheduler.expire_pre_approved_cheque.apply_async(args=[transaction_data['id']], eta=expire_at)
@@ -369,7 +382,10 @@ def cancel_pre_approved_cheque(transaction_id):
 
     # Send cheque cancel SMS to msisdn linked to account number
     Logger.debug(__name__, "cancel_pre_approved_cheque", "00", "Sending cheque cancel SMS to [%s]" % msisdn)
-    sms_sent = Utils.send_sms(msisdn, config.CHEQUE_CANCEL_SMS)
+    cancel_cheque_sms = StringUtils.render_template(config.CHEQUE_CANCEL_SMS,
+                                                    cheque_number=updated_transaction_data['cheque_number'],
+                                                    comment=comment)
+    sms_sent = Utils.send_sms(msisdn, cancel_cheque_sms)
     if sms_sent:
         Logger.info(__name__, "cancel_pre_approved_cheque", "00", "Cheque cancel SMS sent to [%s]" % msisdn)
     else:

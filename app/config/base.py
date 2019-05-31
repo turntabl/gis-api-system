@@ -108,5 +108,6 @@ class BaseConfig(object):
     SMS_API_KEY = '610821a7152b390255eb765450e8d000'
 
     SMS_SENDER = 'PAYPROMPT'
-    CHEQUE_APPROVAL_SMS = 'Dear customer, you have a request to approve this cheque. Dial *XXX*XX# to approve/decline.'
-    CHEQUE_CANCEL_SMS = 'Dear customer, your cheque XXXXXX linked to account XXXXXXXXXXXXX has been cancelled.'
+    CHEQUE_APPROVAL_SMS = 'Dear Customer, you have a pending cheque approval. Kindly dial *718*460# to approve payment.'
+    CHEQUE_CANCEL_SMS = 'Dear Customer, payment of cheque {{cheque_number}} has been declined.\nReason: {{comment}}.\nKindly contact your branch for further assistance.'
+    PRE_APPROVAL_CONFIRMATION_SMS = 'You have successfully pre-approved payment for:\nAcc. No.:{{account_number}}\nCheque No.:{{cheque_number}}\nAmount: GHS {{amount}}'
