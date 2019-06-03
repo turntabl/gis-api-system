@@ -101,17 +101,20 @@ class ApiRequest:
             token = auth_key.split(':')[1]
 
             # Find user and verify that user is ACTIVE
-            user_data = AdministratorService.find_by_username(user, include_password=True)
+            user_data = AdministratorService.find_by_username(user, include_password=True, include_session=True)
             if user_data is None:
-                Logger.error(__name__, "user_authenticate", "02", "Valid session found but user not found")
+                Logger.warn(__name__, "user_authenticate", "02", "Valid session found but user not found")
                 return jsonify(code='03', msg='Unauthorized')
             elif user_data['status'] != AdminStatus.ACTIVE.value:
                 Logger.warn(__name__, "user_authenticate", "01", "User is not active. Status: [%s]" % user_data['status'])
                 return jsonify(code='04', msg='Forbidden')
 
             # Check if session token is valid and has not expired
+            if user_data['session_token'] is None:
+                Logger.warn(__name__, "user_authenticate", "02", "User has logged out or is yet to login")
+                return jsonify(code='03', msg='Unauthorized')
             if user_data['session_token'] != token:
-                Logger.error(__name__, "user_authenticate", "02", "Invalid token")
+                Logger.warn(__name__, "user_authenticate", "02", "Invalid token")
                 return jsonify(code='03', msg='Unauthorized')
 
             # Check if user's institution is active
@@ -158,17 +161,20 @@ class ApiRequest:
                 token = auth_key.split(':')[1]
 
                 # Find user and verify that user has admin rights and is ACTIVE
-                user_data = AdministratorService.find_by_username(user, include_password=True)
+                user_data = AdministratorService.find_by_username(user, include_password=True, include_session=True)
                 if user_data is None:
-                    Logger.error(__name__, "admin_authenticate", "02", "Valid session found but user not found")
+                    Logger.warn(__name__, "admin_authenticate", "02", "Valid session found but user not found")
                     return jsonify(code='03', msg='Unauthorized')
                 elif user_data['status'] != AdminStatus.ACTIVE.value:
                     Logger.warn(__name__, "admin_authenticate", "01", "User is not active. Status: [%s]" % user_data['status'])
                     return jsonify(code='04', msg='Forbidden')
 
                 # Check if session token is valid and has not expired
+                if user_data['session_token'] is None:
+                    Logger.warn(__name__, "admin_authenticate", "02", "User has logged out or is yet to login")
+                    return jsonify(code='03', msg='Unauthorized')
                 if user_data['session_token'] != token:
-                    Logger.error(__name__, "admin_authenticate", "02", "Invalid token")
+                    Logger.warn(__name__, "admin_authenticate", "02", "Invalid token")
                     return jsonify(code='03', msg='Unauthorized')
 
                 # Check if user's institution is active

@@ -21,7 +21,7 @@ from app.services.v1.institution import InstitutionService
 from app.services.v1.role import RoleService
 
 
-@api.route('/v1/admins', methods=['POST'])
+@api.route('/v1/administrators', methods=['POST'])
 # @api_request.admin_authenticate
 @api_request.json
 @api_request.required_body_params('first_name', 'last_name', 'email', 'username', 'role', 'branch')
@@ -92,6 +92,7 @@ def add_administrator():
     request_data['password'] = hashed_password
 
     try:
+        request_data['institution'] = admin_data['institution']['id']
         new_admin_data = AdministratorService.add_administrator(request_data)
         if new_admin_data is None:
             Logger.warn(__name__, "add_administrator", "01", "Administrator [%s] could not be added" % username)
@@ -149,6 +150,21 @@ def get_administrators():
     return JsonResponse.success(data=admin_list, nav=nav)
 
 
+@api.route('/v1/administrators/<admin_id>', methods=['GET'])
+def get_administrator(admin_id):
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    Logger.debug(__name__, "get_administrator", "00", "Received request to get administrator [%s]" % admin_id)
+
+    administrator_data = AdministratorService.get_by_id(admin_id)
+    if administrator_data is None:
+        Logger.warn(__name__, "get_administrator", "01", "Administrator [%s] could not be found" % admin_id)
+        return JsonResponse.failed('Administrator does not exist')
+    Logger.info(__name__, "get_administrator", "00", "Administrator [%s] found!" % admin_id)
+
+    return JsonResponse.success(data=administrator_data)
+
+
 @api.route('/v1/administrators/me', methods=['PUT'])
 @api_request.user_authenticate
 @api_request.json
@@ -203,6 +219,7 @@ def update_admin_profile(admin_id):
     request_data = json.loads(request.data.decode('utf-8'))
     first_name = request_data.get('first_name')
     last_name = request_data.get('last_name')
+    phone_number = request_data.get('phone_number')
 
     if first_name is None and last_name is None:
         Logger.warn(__name__, "update_admin_profile", "01", "First name and/or last name not present in request")
@@ -213,6 +230,11 @@ def update_admin_profile(admin_id):
     elif not isinstance(last_name, str):
         Logger.warn(__name__, "update_admin_profile", "01", "Last name is not string: [%s]" % last_name)
         return JsonResponse.bad_request('Invalid last name')
+    try:
+        long_phone_number = int(phone_number)
+    except ValueError:
+        Logger.warn(__name__, "update_admin_profile", "01", "Phone number is not long: [%s]" % last_name)
+        return JsonResponse.bad_request('Invalid phone number')
 
     # Check if user exists
     admin_to_update = AdministratorService.get_by_id(admin_id)
@@ -240,6 +262,9 @@ def update_admin_profile(admin_id):
 
     if last_name is not None and last_name != admin_to_update['last_name']:
         update_data['last_name'] = last_name
+
+    if phone_number is not None and long_phone_number != admin_to_update['phone_number']:
+        update_data['phone_number'] = long_phone_number
 
     # If update_data dict is empty, nothing to update - return error
     if not update_data:

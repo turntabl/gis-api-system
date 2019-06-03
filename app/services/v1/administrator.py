@@ -61,12 +61,12 @@ class AdministratorService:
         return administrator_data
 
     @staticmethod
-    def find_by_username(username: str, include_password=False):
+    def find_by_username(username: str, include_password=False, include_session=False):
         try:
             username_regex = re.compile('^'+re.escape(username.strip())+'$', re.IGNORECASE)
             admin_data = Administrator.objects(username=username_regex).first()
             if admin_data is not None:
-                admin_data = admin_data.to_dict(include_password=include_password)
+                admin_data = admin_data.to_dict(include_password=include_password, include_session=include_session)
         except Exception as ex:
             admin_data = None
             Logger.error(__name__, "find_by_username", "02", "Exception occurred: {}".format(ex), traceback.format_exc())

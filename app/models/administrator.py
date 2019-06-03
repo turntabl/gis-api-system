@@ -75,7 +75,7 @@ class Administrator(db.Document):
     def __repr__(self):
         return '<Administrator %r>' % self.id
 
-    def to_dict(self, include_password=False, minimal=False):
+    def to_dict(self, include_password=False, include_session=False, minimal=False):
         dict_obj = {}
         for column, value in self._fields.items():
             if column == "institution":
@@ -88,6 +88,9 @@ class Administrator(db.Document):
                 dict_obj[column] = DateUtils.format_datetime(getattr(self, column)) if getattr(self, column) is not None else None
             elif column == 'password':
                 if include_password:
+                    dict_obj[column] = getattr(self, column)
+            elif column == "session_token":
+                if include_session:
                     dict_obj[column] = getattr(self, column)
             else:
                 dict_obj[column] = getattr(self, column)
