@@ -91,6 +91,7 @@ def login():
         Logger.error(__name__, "login", "02", "Error while updating admin [%s] session token: %s" % (username, ex))
         return JsonResponse.server_error('Login failed')
 
+    user_data['session_token'] = data['session_token']
     return JsonResponse.success(msg='Login successful!', data=user_data)
 
 
@@ -159,6 +160,7 @@ def setup_new_admin():
         Logger.warn(__name__, "setup_new_admin", "01", "Updating admin [%s] password failed: %s" % (username, ex))
         return JsonResponse.failed('Password could not be updated')
 
+    admin_data['session_token'] = admin_update['session_token']
     return JsonResponse.success(msg='Admin setup successful!', data=admin_data)
 
 
