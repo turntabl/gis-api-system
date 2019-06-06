@@ -87,7 +87,7 @@ class BaseConfig(object):
     GRAPHITE_PORT = 2004
     GRAPHITE_PREFIX = "NSURE"
 
-    PORTAL_URL = 'http://192.168.0.62:5072'
+    PORTAL_URL = 'http://192.168.0.65:9999'
 
     # Account Management Configuration
     ENFORCE_PASSWORD_POLICY = True
@@ -101,6 +101,12 @@ class BaseConfig(object):
     # Other configuration
     SALT = '$<NBc2W33M;OYl{z'
     SESSION_EXPIRY_HOURS = 12
+
+    # Default cheque settings
+    PRE_APPROVAL_EXPIRY_HOURS = 48
+    APPROVAL_EXPIRY_HOURS = 24
+    APPROVAL_REMINDER_INTERVAL = 15
+    APPROVAL_REMINDER_FREQUENCY = 3
 
     PARENT_INST_SHORT_NAME = 'NSANO'
 

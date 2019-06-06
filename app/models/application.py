@@ -22,7 +22,7 @@ class Application(db.Document):
     def __repr__(self):
         return '<Application %r>' % self.id
 
-    def to_dict(self):
+    def to_dict(self, minimal=False):
         dict_obj = {}
         for column, value in self._fields.items():
             if column in ('created_at', 'modified_at'):

@@ -30,6 +30,7 @@ class BranchPrivileges(db.EmbeddedDocument):
 
 class TransactionPrivileges(db.EmbeddedDocument):
     initiate_cheque = db.BooleanField(required=True, default=False)
+    view_pre_approvals = db.BooleanField(required=True, default=False)
     approve_cheque = db.BooleanField(required=True, default=False)
     pay_cheque = db.BooleanField(required=True, default=False)
 
@@ -39,6 +40,11 @@ class ReportPrivileges(db.EmbeddedDocument):
     export_report = db.BooleanField(required=True, default=False)
 
 
+class SettingsPrivileges(db.EmbeddedDocument):
+    view_settings = db.BooleanField(required=True, default=False)
+    manage_settings = db.BooleanField(required=True, default=False)
+
+
 class Privileges(db.EmbeddedDocument):
     dashboard = db.EmbeddedDocumentField(DashboardPrivileges, required=True)
     admin = db.EmbeddedDocumentField(AdminPrivileges, required=True)
@@ -46,6 +52,7 @@ class Privileges(db.EmbeddedDocument):
     branch = db.EmbeddedDocumentField(BranchPrivileges, required=True)
     transaction = db.EmbeddedDocumentField(TransactionPrivileges, required=True)
     report = db.EmbeddedDocumentField(ReportPrivileges, required=True)
+    settings = db.EmbeddedDocumentField(SettingsPrivileges, required=False)
 
 
 class Role(db.Document):

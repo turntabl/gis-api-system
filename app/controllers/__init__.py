@@ -62,6 +62,7 @@ from app.controllers.v1 import administrator
 from app.controllers.v1 import application
 from app.controllers.v1 import report
 from app.controllers.v1 import role
+from app.controllers.v1 import settings
 from app.controllers.v1 import transaction
 
 

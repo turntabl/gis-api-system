@@ -22,12 +22,15 @@ from app.services.v1.role import RoleService
 
 
 @api.route('/v1/administrators', methods=['POST'])
-# @api_request.admin_authenticate
+# @api_request.api_authenticate
+# @api_request.admin_authenticate('admin.add_admin')
 @api_request.json
 @api_request.required_body_params('first_name', 'last_name', 'email', 'username', 'role', 'branch')
 def add_administrator():
     # admin_data = g.admin
     admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_username = admin_data['username']
+    admin_branch_code = admin_data['branch']['branch_id']
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -40,6 +43,11 @@ def add_administrator():
 
     institution_id = admin_data['institution']['id']
 
+    # Validate email
+    if not Utils.is_valid_email(email):
+        Logger.warn(__name__, "add_administrator", "01", "Invalid email address: [%s]" % email)
+        return JsonResponse.bad_request('Invalid email address')
+
     # Validate username, make sure it doesn't already exist
     Logger.debug(__name__, "add_administrator", "00", "Checking if admin with username [%s] already exist" % username)
     existing_admin = AdministratorService.find_by_username(username)
@@ -48,10 +56,13 @@ def add_administrator():
         return JsonResponse.bad_request('Admin with username already exist')
     Logger.info(__name__, "add_administrator", "00", "Admin with username [%s] does not exist" % username)
 
-    # Validate email
-    if not Utils.is_valid_email(email):
-        Logger.warn(__name__, "add_administrator", "01", "Invalid email address: [%s]" % email)
-        return JsonResponse.bad_request('Invalid email address')
+    # Validate email address, make sure it doesn't already exist
+    Logger.debug(__name__, "add_administrator", "00", "Checking if admin with email [%s] already exist" % email)
+    existing_admin = AdministratorService.find_by_email(email)
+    if existing_admin is not None:
+        Logger.warn(__name__, "add_administrator", "01", "Admin with email [%s] already exists" % email)
+        return JsonResponse.bad_request('Admin with email already exist')
+    Logger.info(__name__, "add_administrator", "00", "Admin with email [%s] does not exist" % email)
 
     # Check if institution exists and is active
     Logger.debug(__name__, "add_administrator", "00", "Checking if institution [%s] exists" % institution_id)
@@ -74,6 +85,11 @@ def add_administrator():
         Logger.warn(__name__, "add_administrator", "01", "Branch [%s] exists, but is %s" % (branch, branch_data['status']))
         return JsonResponse.failed('Branch is %s' % branch_data['status'].lower())
     Logger.info(__name__, "add_administrator", "00", "Branch [%s] exists and is active" % branch)
+
+    # If admin does not belong to ALL branch, limit adding admin to their branch only
+    if admin_branch_code != 'ALL' and branch != admin_branch_code:
+        Logger.warn(__name__, "add_administrator", "00", "Admin [%s] not allowed to add admin to branch [%s]" % (admin_username, admin_branch_code))
+        return JsonResponse.forbidden('You cannot add an admin to this branch')
 
     # Check if ROLE exists and is active
     Logger.debug(__name__, "add_administrator", "00", "Checking if role [%s] exists" % role)
@@ -114,11 +130,13 @@ def add_administrator():
 
 
 @api.route('/v1/administrators', methods=['GET'])
-# @api_request.user_authenticate
+# @api_request.api_authenticate
+# @api_request.admin_authenticate('admin.view_admin')
 def get_administrators():
     # admin_data = g.admin
     admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     # institution_data = admin_data['institution']
+    is_branch_admin = admin_data['branch']['branch_id'] == 'ALL'
 
     Logger.debug(__name__, "get_administrators", "00", "Received request to get administrators")
     params = request.args.to_dict()
@@ -131,19 +149,12 @@ def get_administrators():
     if 'paginate' in params:
         paginate = params.pop('paginate').lower() != 'false'
 
-    # TODO: Limit administrators user can see depending on their institution and branch
+    # By default, filter by institution
+    params['institution'] = admin_data['institution']['id']
 
-    # if institution_data['short_name'] == config.PARENT_INST_SHORT_NAME and admin_data['user_type'] == UserType.SUPER_ADMIN.value:
-    #     pass
-    # elif admin_data['user_type'] == UserType.ADMIN.value:
-    #     nsano_country_inst = config.PARENT_INST_SHORT_NAME + institution_data['country']
-    #     if institution_data['short_name'] == nsano_country_inst:
-    #         institution_ids = InstitutionService.get_institution_ids(country=institution_data['country'])
-    #         params['country__in'] = institution_ids
-    #     else:
-    #         params['institution'] = institution_data['id']
-    # else:
-    #     params['institution'] = institution_data['id']
+    # Limit administrators user can see depending on their institution and branch
+    # if not is_branch_admin:
+    #     params['branch'] = admin_data['branch']['branch_id']
 
     admin_list, nav = AdministratorService.find_administrators(paginate=paginate, minimal=minimal, **params)
 
@@ -151,22 +162,32 @@ def get_administrators():
 
 
 @api.route('/v1/administrators/<admin_id>', methods=['GET'])
+# @api_request.api_authenticate
+# @api_request.admin_authenticate('admin.view_admin')
 def get_administrator(admin_id):
     # admin_data = g.admin
     admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    is_branch_admin = admin_data['branch']['branch_id'] == 'ALL'
     Logger.debug(__name__, "get_administrator", "00", "Received request to get administrator [%s]" % admin_id)
 
     administrator_data = AdministratorService.get_by_id(admin_id)
     if administrator_data is None:
         Logger.warn(__name__, "get_administrator", "01", "Administrator [%s] could not be found" % admin_id)
         return JsonResponse.failed('Administrator does not exist')
+    # if administrator_data['institution']['id'] != admin_data['institution']['id']:
+    #     Logger.warn(__name__, "get_administrator", "01", "Admin forbidden from getting details of admin in another institution")
+    #     return JsonResponse.forbidden()
+    # if not is_branch_admin and admin_data['branch']['branch_id'] != administrator_data['branch']['branch_id']:
+    #     Logger.warn(__name__, "get_administrator", "01", "Admin forbidden from getting details of admin in another branch")
+    #     return JsonResponse.forbidden()
     Logger.info(__name__, "get_administrator", "00", "Administrator [%s] found!" % admin_id)
 
     return JsonResponse.success(data=administrator_data)
 
 
 @api.route('/v1/administrators/me', methods=['PUT'])
-@api_request.user_authenticate
+# @api_request.api_authenticate
+# @api_request.user_authenticate
 @api_request.json
 def update_me():
     admin_data = g.admin
@@ -208,12 +229,14 @@ def update_me():
 
 
 @api.route('/v1/administrators/<admin_id>', methods=['PUT'])
-# @api_request.user_authenticate
+# @api_request.api_authenticate
+# @api_request.admin_authenticate('admin.update_admin')
 @api_request.json
 def update_admin_profile(admin_id):
     # admin_data = g.admin
     admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     institution_data = admin_data['institution']
+    admin_branch = admin_data['branch']
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -246,15 +269,11 @@ def update_admin_profile(admin_id):
         return JsonResponse.failed('Admin is not active')
 
     # Check if admin user has access to perform update
-    # if admin_data['user_type'] != UserType.SUPER_ADMIN.value:
-    #     is_my_institution = institution_data['id'] == admin_to_update['institution']['id']
-    #     if is_my_institution:
-    #         if admin_data['user_type'] != UserType.ADMIN.value:
-    #             Logger.warn(__name__, "update_admin_profile", "01", "User [%s] does not have enough privileges to update user" % admin_data['username'])
-    #             return JsonResponse.forbidden('You cannot update this user\'s profile')
-    #     else:
-    #         Logger.warn(__name__, "update_admin_profile", "01", "User [%s] does not have enough privileges to update user" % admin_data['username'])
-    #         return JsonResponse.forbidden('You cannot update this user\'s profile')
+    if admin_data['branch']['branch_id'] != 'ALL':
+        is_same_branch = admin_branch['branch_id'] == admin_to_update['branch']['branch_id']
+        if not is_same_branch:
+            Logger.warn(__name__, "update_admin_profile", "01", "Admin [%s] cannot update admin in another branch" % admin_data['username'])
+            return JsonResponse.forbidden('You cannot update this admin\'s profile')
 
     update_data = {}
     if first_name is not None and first_name != admin_to_update['first_name']:
@@ -281,13 +300,16 @@ def update_admin_profile(admin_id):
 
 
 @api.route('/v1/administrators/<admin_id>/status', methods=['PUT'])
-# @api_request.admin_authenticate
+# @api_request.api_authenticate
+# @api_request.admin_authenticate('admin.update_admin')
 @api_request.json
 @api_request.required_body_params('status')
 def update_admin_status(admin_id):
-    # Get user data from request context
-    admin_data = g.user
+    # Get admin data from request context
+    # admin_data = g.admin
+    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     admin_username = admin_data['username']
+    admin_branch = admin_data['branch']
     Logger.debug(__name__, "update_admin_status", "00",
                  "Admin [%s] requesting to change account [%s] status" % (admin_username, admin_id))
 
@@ -300,10 +322,12 @@ def update_admin_status(admin_id):
         Logger.warn(__name__, "update_admin_status", "01", "Administrator to update not found")
         return JsonResponse.failed('Admin to update not found')
 
-    # if admin_data['user_type'] != UserType.SUPER_ADMIN.value:
-    #     if admin_data['institution']['id'] != admin_to_update['institution']['id']:
-    #         Logger.warn(__name__, "update_admin_status", "01", "Attempting to update status of user of another account")
-    #         return JsonResponse.forbidden()
+    # Check if admin user has access to perform update
+    if admin_data['branch']['branch_id'] != 'ALL':
+        is_same_branch = admin_branch['branch_id'] == admin_to_update['branch']['branch_id']
+        if not is_same_branch:
+            Logger.warn(__name__, "update_admin_profile", "01", "Admin [%s] cannot update admin in another branch" % admin_data['username'])
+            return JsonResponse.forbidden('You cannot update this admin\'s profile')
 
     # Check if status is valid
     if status not in (AdminStatus.ACTIVE.value, AdminStatus.SUSPENDED.value):

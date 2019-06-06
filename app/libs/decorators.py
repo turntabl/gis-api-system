@@ -11,11 +11,9 @@ from flask import jsonify
 from flask import request
 
 from app.libs.logger import Logger
-from app.models.administrator import Administrator
 from app.models.administrator import Status as AdminStatus
 from app.services.v1.administrator import AdministratorService
 from app.services.v1.application import ApplicationService
-from app.services.v1.role import RoleService
 
 
 class ApiRequest:
@@ -59,7 +57,7 @@ class ApiRequest:
                 Logger.error(__name__, "api_authenticate", "02", "Invalid API Key in request")
                 return jsonify(code='03', msg='Unauthorized')
             elif not application_data['active']:
-                Logger.warn(__name__, "api_authenticate", "01", "Application is not active")
+                Logger.error(__name__, "api_authenticate", "02", "Application is not active")
                 return jsonify(code='04', msg='Forbidden')
 
             # Check if application is restricted to a set of IPs

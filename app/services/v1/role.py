@@ -12,6 +12,7 @@ from app.models.role import DashboardPrivileges
 from app.models.role import Privileges
 from app.models.role import ReportPrivileges
 from app.models.role import RolePrivileges
+from app.models.role import SettingsPrivileges
 from app.models.role import TransactionPrivileges
 from app.models.role import Role
 
@@ -57,6 +58,7 @@ class RoleService:
                     elif module == 'transaction':
                         transaction_priv = TransactionPrivileges()
                         transaction_priv.initiate_cheque = module_priv_map.get('initiate_cheque') or False
+                        transaction_priv.view_pre_approvals = module_priv_map.get('view_pre_approvals') or False
                         transaction_priv.approve_cheque = module_priv_map.get('approve_cheque') or False
                         transaction_priv.pay_cheque = module_priv_map.get('pay_cheque') or False
                         privileges.transaction = transaction_priv
@@ -65,6 +67,11 @@ class RoleService:
                         report_priv.view_report = module_priv_map.get('view_report') or False
                         report_priv.export_report = module_priv_map.get('export_report') or False
                         privileges.report = report_priv
+                    elif module == 'settings':
+                        settings_priv = SettingsPrivileges()
+                        settings_priv.view_settings = module_priv_map.get('view_settings') or False
+                        settings_priv.manage_settings = module_priv_map.get('manage_settings') or False
+                        privileges.settings = settings_priv
 
             role_data.privileges = privileges
             role_data.save()
@@ -189,6 +196,7 @@ class RoleService:
                     elif module == 'transaction':
                         transaction_priv = TransactionPrivileges()
                         transaction_priv.initiate_cheque = module_priv_map.get('initiate_cheque') or False
+                        transaction_priv.view_pre_approvals = module_priv_map.get('view_pre_approvals') or False
                         transaction_priv.approve_cheque = module_priv_map.get('approve_cheque') or False
                         transaction_priv.pay_cheque = module_priv_map.get('pay_cheque') or False
                         privileges.transaction = transaction_priv
@@ -197,6 +205,11 @@ class RoleService:
                         report_priv.view_report = module_priv_map.get('view_report') or False
                         report_priv.export_report = module_priv_map.get('export_report') or False
                         privileges.report = report_priv
+                    elif module == 'settings':
+                        settings_priv = SettingsPrivileges()
+                        settings_priv.view_settings = module_priv_map.get('view_settings') or False
+                        settings_priv.manage_settings = module_priv_map.get('manage_settings') or False
+                        privileges.settings = settings_priv
 
                 role_data.privileges = privileges
 
