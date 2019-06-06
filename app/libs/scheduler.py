@@ -7,6 +7,7 @@ from app.config import config
 from app.libs.logger import Logger
 from app.libs.utils import Utils
 from app.models.transaction import CustomerStatus
+from app.services.v1.settings import SettingsService
 from app.services.v1.transaction import TransactionService
 
 
@@ -92,15 +93,18 @@ class Scheduler:
         else:
             Logger.warn(__name__, "send_approval_reminder", "00", "Sending cheque approval SMS to [%s] failed" % msisdn)
             return
-        Logger.debug(__name__, "send_approval_reminder", "00", "Updating transaction [%s] to expired" % transaction_id)
-        transaction_update = {'customer_status': CustomerStatus.EXPIRED.value}
-        try:
-            updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
-            Logger.info(__name__, "send_approval_reminder", "00", "Transaction [%s] expired" % transaction_id)
-        except Exception as ex:
-            Logger.error(__name__, "send_approval_reminder", "02",
-                         "Error while updating transaction [%s] to expired: %s" % (transaction_id, ex))
-            # Reschedule expiry
-            retry_at = datetime.datetime.now() + datetime.timedelta(minutes=5)
-            Scheduler.expire_cheque_pending_customer.apply_sync(args=[transaction_id], eta=retry_at)
+        # Setup reminder if approval_retries limit not reached
+        # Get settings
+        settings_data = SettingsService.find_one()
+        if settings_data is not None:
+            reminder_interval = settings_data['approval_reminder_interval']
+            max_approval_retries = settings_data['approval_reminder_frequency']
+        else:
+            reminder_interval = config.APPROVAL_REMINDER_INTERVAL
+            max_approval_retries = config.APPROVAL_REMINDER_FREQUENCY
+
+        if updated_transaction_data['approval_retries'] < max_approval_retries:
+            # Setup to remind if not approved after n minutes if configured, else use default
+            remind_at = datetime.datetime.now() + datetime.timedelta(minutes=reminder_interval)
+            Scheduler.send_approval_reminder.apply_async(args=[transaction_data['id']], eta=remind_at)
 

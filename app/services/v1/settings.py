@@ -50,6 +50,13 @@ class SettingsService:
         return settings_data
 
     @staticmethod
+    def find_one(minimal=False):
+        settings_list, nav = SettingsService.find_settings(page=1, size=1, minimal=minimal)
+        if not settings_list:
+            return None
+        return settings_list[0]
+
+    @staticmethod
     def update_settings(uid, update_data):
         try:
             settings_data = Settings.objects(id=uid).first()

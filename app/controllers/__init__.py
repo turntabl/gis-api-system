@@ -60,6 +60,7 @@ from app.controllers.v1 import institution
 from app.controllers.v1 import branch
 from app.controllers.v1 import administrator
 from app.controllers.v1 import application
+from app.controllers.v1 import dashboard
 from app.controllers.v1 import report
 from app.controllers.v1 import role
 from app.controllers.v1 import settings

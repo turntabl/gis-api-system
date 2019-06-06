@@ -122,6 +122,37 @@ class TransactionService:
             raise ex
 
     @staticmethod
+    def count_transactions(**filter_parameters):
+        try:
+            query = {}
+            for field, value in filter_parameters.items():
+                if field.split('__')[0] in Transaction._fields and value != '':
+                    query[field] = value
+
+            Logger.debug(__name__, "count_transactions", "00", "Filter query: %s" % str(query))
+
+            if 'start_date' in filter_parameters and 'end_date' not in filter_parameters:
+                transaction_count = Transaction.objects(
+                    sent_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d')) \
+                    .filter(**query).count()
+            elif 'start_date'not in filter_parameters and 'end_date' in filter_parameters:
+                transaction_count = Transaction.objects(
+                    sent_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], "%Y-%m-%d") + datetime.timedelta(days=1)
+                ).filter(**query).count()
+            elif 'start_date' in filter_parameters and 'end_date' in filter_parameters:
+                transaction_count = Transaction.objects(
+                    sent_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d'),
+                    sent_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], '%Y-%m-%d') + datetime.timedelta(days=1)
+                ).filter(**query).count()
+            else:
+                transaction_count = Transaction.objects.filter(**query).count()
+
+            return transaction_count
+        except Exception as ex:
+            Logger.error(__name__, "count_transactions", "02", "Error while counting transactions", traceback.format_exc())
+            raise ex
+
+    @staticmethod
     def update_transaction(uid, update_data):
         try:
             transaction_data = Transaction.objects(id=uid).first()

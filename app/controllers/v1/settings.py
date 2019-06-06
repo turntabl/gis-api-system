@@ -36,7 +36,7 @@ def add_or_update_settings():
             return JsonResponse.bad_request()
 
     # Check if settings already exist
-    existing_settings, nav = SettingsService.find_settings(page=1, size=1)
+    existing_settings = SettingsService.find_one()
 
     # If settings exist, add else update
     if not existing_settings:
@@ -65,7 +65,7 @@ def get_settings():
 
     Logger.debug(__name__, "get_settings", "00", "Received request to get settings")
 
-    settings_data, nav = SettingsService.find_settings(page=1, size=1)
+    settings_data = SettingsService.find_one()
     if not settings_data:
         Logger.warn(__name__, "get_settings", "01", "Settings could not be found")
         return JsonResponse.failed('Settings does not exist')

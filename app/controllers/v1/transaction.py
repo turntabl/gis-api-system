@@ -18,6 +18,7 @@ from app.models.transaction import CustomerStatus
 from app.models.transaction import PaymentStatus
 from app.models.transaction import PayoutType
 from app.services.v1.transaction import TransactionService
+from app.services.v1.settings import SettingsService
 
 
 @api.route('/v1/transactions/initiate', methods=['POST'])
@@ -259,8 +260,15 @@ def pre_approve_cheque():
     else:
         Logger.warn(__name__, "pre_approve_cheque", "00", "Sending pre-approval confirmation SMS to [%s] failed" % msisdn)
 
+    # Get settings
+    settings_data = SettingsService.find_one()
+    if settings_data is not None:
+        expiry_hours = settings_data['pre_approval_expiry_hours']
+    else:
+        expiry_hours = config.PRE_APPROVAL_EXPIRY_HOURS
+
     # Setup expiry if not processed after 48 hours
-    expire_at = datetime.datetime.now() + datetime.timedelta(hours=48)
+    expire_at = datetime.datetime.now() + datetime.timedelta(hours=expiry_hours)
     Scheduler.expire_pre_approved_cheque.apply_async(args=[transaction_data['id']], eta=expire_at)
 
     resp_data = {
@@ -487,9 +495,19 @@ def complete_transaction_initiation(transaction_id):
         Logger.warn(__name__, "complete_transaction_initiation", "00", "Sending cheque approval SMS to [%s] failed" % msisdn)
         return JsonResponse.failed('Sending approval request to customer failed')
 
-    # Setup to remind if not approved after 15 minutes
-    remind_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
-    expire_at = datetime.datetime.now() + datetime.timedelta(hours=24)
+    # Get settings
+    settings_data = SettingsService.find_one()
+    if settings_data is not None:
+        reminder_interval = settings_data['approval_reminder_interval']
+        expiry_hours = settings_data['approval_expiry_hours']
+    else:
+        reminder_interval = config.APPROVAL_REMINDER_INTERVAL
+        expiry_hours = config.APPROVAL_EXPIRY_HOURS
+
+    # Setup to remind if not approved after n minutes if configured, else use default
+    remind_at = datetime.datetime.now() + datetime.timedelta(minutes=reminder_interval)
+    # Setup to expire if not approved after n minutes if configured, else use default
+    expire_at = datetime.datetime.now() + datetime.timedelta(hours=expiry_hours)
     Scheduler.send_approval_reminder.apply_async(args=[transaction_data['id']], eta=remind_at)
     Scheduler.expire_cheque_pending_customer.apply_async(args=[transaction_data['id']], eta=expire_at)
 
@@ -592,9 +610,19 @@ def send_approval_request(transaction_id):
     else:
         Logger.warn(__name__, "send_approval_request", "00", "Sending cheque approval SMS to [%s] failed" % msisdn)
 
-    # Setup to remind if not approved after 15 minutes
-    remind_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
-    expire_at = datetime.datetime.now() + datetime.timedelta(hours=24)
+    # Get settings
+    settings_data = SettingsService.find_one()
+    if settings_data is not None:
+        reminder_interval = settings_data['approval_reminder_interval']
+        expiry_hours = settings_data['approval_expiry_hours']
+    else:
+        reminder_interval = config.APPROVAL_REMINDER_INTERVAL
+        expiry_hours = config.APPROVAL_EXPIRY_HOURS
+
+    # Setup to remind if not approved after n minutes if configured, else use default
+    remind_at = datetime.datetime.now() + datetime.timedelta(minutes=reminder_interval)
+    # Setup to expire if not approved after n hours if configured, else use default
+    expire_at = datetime.datetime.now() + datetime.timedelta(hours=expiry_hours)
     Scheduler.send_approval_reminder.apply_async(args=[transaction_data['id']], eta=remind_at)
     Scheduler.expire_cheque_pending_customer.apply_async(args=[transaction_data['id']], eta=expire_at)
 
