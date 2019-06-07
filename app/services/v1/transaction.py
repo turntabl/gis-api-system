@@ -133,16 +133,16 @@ class TransactionService:
 
             if 'start_date' in filter_parameters and 'end_date' not in filter_parameters:
                 transaction_count = Transaction.objects(
-                    sent_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d')) \
+                    created_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d')) \
                     .filter(**query).count()
             elif 'start_date'not in filter_parameters and 'end_date' in filter_parameters:
                 transaction_count = Transaction.objects(
-                    sent_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], "%Y-%m-%d") + datetime.timedelta(days=1)
+                    created_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], "%Y-%m-%d") + datetime.timedelta(days=1)
                 ).filter(**query).count()
             elif 'start_date' in filter_parameters and 'end_date' in filter_parameters:
                 transaction_count = Transaction.objects(
-                    sent_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d'),
-                    sent_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], '%Y-%m-%d') + datetime.timedelta(days=1)
+                    created_at__gte=datetime.datetime.strptime(filter_parameters['start_date'], '%Y-%m-%d'),
+                    created_at__lt=datetime.datetime.strptime(filter_parameters['end_date'], '%Y-%m-%d') + datetime.timedelta(days=1)
                 ).filter(**query).count()
             else:
                 transaction_count = Transaction.objects.filter(**query).count()

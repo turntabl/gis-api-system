@@ -13,7 +13,7 @@ from app.models.transaction import PaymentStatus
 from app.services.v1.transaction import TransactionService
 
 
-@api.route('/v1/dashboard', methods=['GET'])
+@api.route('/v1/dashboard/metrics', methods=['GET'])
 # @api_request.api_authenticate
 # @api_request.admin_authenticate('dashboard.view_dashboard')
 def get_metrics():
