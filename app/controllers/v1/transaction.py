@@ -958,6 +958,11 @@ def post_customer_approval_update(transaction_id):
     if transaction_data is None:
         Logger.warn(__name__, "post_customer_approval_update", "01", "Transaction [%s] does not exist" % transaction_id)
         return JsonResponse.failed('Transaction not found')
+    if transaction_data['customer_status'] == CustomerStatus.EXPIRED.value:
+        Logger.warn(__name__, "post_customer_approval_update", "01",
+                    "Transaction [%s] has expired. CustomerStatus: [%s] BankStatus: [%s]"
+                    % (transaction_id, transaction_data['customer_status'], transaction_data['bank_status']))
+        return JsonResponse.failed('Transaction has expired')
     if transaction_data['customer_status'] != CustomerStatus.APPROVED.value:
         Logger.warn(__name__, "post_customer_approval_update", "01",
                     "Transaction [%s] has not been approved by customer. CustomerStatus: [%s] BankStatus: [%s]"
