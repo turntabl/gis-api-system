@@ -88,7 +88,7 @@ def add_administrator():
 
     # If admin does not belong to ALL branch, limit adding admin to their branch only
     if admin_branch_code != 'ALL' and branch != admin_branch_code:
-        Logger.warn(__name__, "add_administrator", "00", "Admin [%s] not allowed to add admin to branch [%s]" % (admin_username, admin_branch_code))
+        Logger.warn(__name__, "add_administrator", "00", "Admin [%s] not allowed to add admin to branch [%s]" % (admin_username, branch))
         return JsonResponse.forbidden('You cannot add an admin to this branch')
 
     # Check if ROLE exists and is active

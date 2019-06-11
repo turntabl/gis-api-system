@@ -106,6 +106,8 @@ class BranchService:
             query = {}
             for field, value in filter_parameters.items():
                 if field.split('__')[0] in Branch._fields and value != '':
+                    if field == 'branch_id':
+                        value = value.upper()
                     query[field] = value
 
             if 'size' not in filter_parameters:

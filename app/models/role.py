@@ -1,6 +1,7 @@
 # role.py
 
 import datetime
+import enum
 
 from app.application import db
 from app.libs.utils import DateUtils
@@ -55,9 +56,19 @@ class Privileges(db.EmbeddedDocument):
     settings = db.EmbeddedDocumentField(SettingsPrivileges, required=False)
 
 
+class RoleDefaults(enum.Enum):
+    COUNTRY = 'COUNTRY'
+    BRANCH = 'BRANCH'
+
+    @staticmethod
+    def values():
+        return [d.value for d in RoleDefaults]
+
+
 class Role(db.Document):
     name = db.StringField(required=True)
     privileges = db.EmbeddedDocumentField(Privileges, required=True)
+    default = db.StringField(required=False, null=True, default=None, choices=RoleDefaults.values())
     created_by = db.StringField(required=True, null=False)
     created_at = db.DateTimeField(default=datetime.datetime.utcnow)
     modified_at = db.DateTimeField(null=True, default=None, onupdate=datetime.datetime.utcnow)

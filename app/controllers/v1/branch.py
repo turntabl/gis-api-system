@@ -13,9 +13,11 @@ from app.libs.logger import Logger
 from app.libs.utils import Utils
 from app.models.branch import Branch
 from app.models.branch import Status as BranchStatus
+from app.models.role import RoleDefaults
 from app.services.v1.administrator import AdministratorService
 from app.services.v1.branch import BranchService
 from app.services.v1.institution import InstitutionService
+from app.services.v1.role import RoleService
 
 
 @api.route('/v1/branches', methods=['POST'])
@@ -59,9 +61,17 @@ def add_branch():
         Logger.warn(__name__, "add_branch", "02", "Could not save branch [%s]: %s" % (branch_id, ex))
         return JsonResponse.server_error('Branch could not be added')
 
+    # Get default role for branch
+    Logger.debug(__name__, "add_branch", "00", "Getting default role to assign to branch admin")
+    default_branch_role = RoleService.get_default_role(RoleDefaults.BRANCH.value)
+    if default_branch_role is None:
+        Logger.warn(__name__, "add_branch", "01", "Default role for branch admin does not exist")
+        return JsonResponse.failed('No role to assign branch admin')
+    Logger.info(__name__, "add_branch", "00", "Default role for branch admin found!")
+
     # Generate random password for first time login
     random_password = Utils.generate_alphanum_password()
-    Logger.debug(__name__, "add_branch", "00", "Generated user [%s] password: [%s]" % (username, random_password))
+    # Logger.debug(__name__, "add_branch", "00", "Generated user [%s] password: [%s]" % (username, random_password))
 
     # Save user with hashed password
     hashed_password = Utils.hash_password(random_password)
@@ -74,8 +84,8 @@ def add_branch():
         'username': username,
         'password': hashed_password,
         'institution': institution_data['id'],
-        'branch': branch_data['id'],
-        'role': 'defaultRole',
+        'branch': branch_data['branch_id'],
+        'role': default_branch_role['id'],
         'phone_number': request_data.get('phone_number')
     }
     try:
@@ -182,5 +192,5 @@ def update_branch_status(branch_uid):
         Logger.warn(__name__, "update_branch_status", "01", "Could not update branch [%s] status: %s" % (branch_uid, ex))
         return JsonResponse.server_error('Branch status could not be updated')
 
-    resp_msg = 'Branch %s successfully!' % ("activated" if status == BranchStatus.ACTIVE.value else status.lower())
+    resp_msg = 'Branch %s successfully!' % ("activated" if status == BranchStatus.ACTIVE.value else "deactivated")
     return JsonResponse.success(resp_msg, data=branch_data)

@@ -101,6 +101,18 @@ class RoleService:
         return role_data
 
     @staticmethod
+    def get_default_role(tag, minimal=True):
+        try:
+            role_data = Role.objects(default=tag.strip().upper()).first()
+            if role_data is not None:
+                role_data = role_data.to_dict(minimal=minimal)
+        except Exception as ex:
+            role_data = None
+            Logger.error(__name__, "get_default_role", "02", "Exception occurred: {}".format(ex), traceback.format_exc())
+
+        return role_data
+
+    @staticmethod
     def find_roles(order_by='-created_at', paginate=True, minimal=True, **filter_parameters):
         try:
             query = {}
