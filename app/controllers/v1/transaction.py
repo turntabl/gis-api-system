@@ -79,6 +79,20 @@ def initiate_transaction():
         return JsonResponse.failed('This cheque cannot be resubmitted')
     Logger.info(__name__, "initiate_transaction", "00", "Cheque [%s] can be resubmitted" % cheque_code)
 
+    # Check if cheque has been pre-approved
+    Logger.debug(__name__, "initiate_transaction", "00", "Checking if cheque [%s] has been pre-approved" % cheque_code)
+    transaction_filter = {
+        'cheque_number': cheque_number,
+        'account_number': account_number,
+        'pre_approved': True,
+        'customer_status': CustomerStatus.APPROVED.value
+    }
+    transaction_list, nav = TransactionService.find_transactions(paginate=False, **transaction_filter)
+    if transaction_list:
+        Logger.warn(__name__, "initiate_transaction", "01", "Cheque [%s] has already been pre-approved" % cheque_code)
+        return JsonResponse.failed('This cheque has been pre-approved')
+    Logger.info(__name__, "initiate_transaction", "00", "Cheque [%s] has not been pre-approved" % cheque_code)
+
     # Get last record of cheque
     transaction_filter = {
         'cheque_number': cheque_number,
