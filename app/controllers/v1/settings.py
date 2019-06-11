@@ -48,7 +48,7 @@ def add_or_update_settings():
             return JsonResponse.server_error('Settings could not be added')
     else:
         try:
-            settings_data = SettingsService.update_settings(existing_settings[0]['id'], parsed_data)
+            settings_data = SettingsService.update_settings(existing_settings['id'], parsed_data)
             Logger.info(__name__, "add_or_update_settings", "00", "Settings updated successfully!")
         except Exception as ex:
             Logger.error(__name__, "add_or_update_settings", "02", "Error while adding settings: %s" % ex)
@@ -71,4 +71,4 @@ def get_settings():
         return JsonResponse.failed('Settings does not exist')
     Logger.info(__name__, "get_settings", "00", "Settings found!")
 
-    return JsonResponse.success(data=settings_data[0])
+    return JsonResponse.success(data=settings_data)

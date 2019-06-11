@@ -21,8 +21,14 @@ def get_metrics():
     admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     params = request.args.to_dict()
     Logger.debug(__name__, "get_metrics", "00", "Received request to get dashboard metrics", params)
-    # Get date params if present
+    # Get date and branch params if present
     filter_params = {key: params[key] for key in params if key in ('start_date', 'end_date')}
+    # If admin, does not belong to ALL branch - get data for their branch
+    if admin_data['branch']['branch_id'] != 'ALL':
+        filter_params['processed_branch'] = admin_data['branch']['branch_id']
+    else:
+        if params.get('branch_id'):
+            filter_params['processed_branch'] = params['branch_id']
     # Get approved cheques (bank approved, customer approved)
     bank_approved_cheques = TransactionService.count_transactions(bank_status=BankStatus.PAYMENT_APPROVED.value,
                                                                   payment_status=PaymentStatus.UNPAID.value,
