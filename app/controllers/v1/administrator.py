@@ -22,13 +22,12 @@ from app.services.v1.role import RoleService
 
 
 @api.route('/v1/administrators', methods=['POST'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('admin.add_admin')
+@api_request.api_authenticate
+@api_request.admin_authenticate('admin.add_admin')
 @api_request.json
 @api_request.required_body_params('first_name', 'last_name', 'email', 'username', 'role', 'branch')
 def add_administrator():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
     admin_username = admin_data['username']
     admin_branch_code = admin_data['branch']['branch_id']
 
@@ -130,11 +129,10 @@ def add_administrator():
 
 
 @api.route('/v1/administrators', methods=['GET'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('admin.view_admin')
+@api_request.api_authenticate
+@api_request.admin_authenticate('admin.view_admin')
 def get_administrators():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
     # institution_data = admin_data['institution']
     is_branch_admin = admin_data['branch']['branch_id'] == 'ALL'
 
@@ -162,11 +160,10 @@ def get_administrators():
 
 
 @api.route('/v1/administrators/<admin_id>', methods=['GET'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('admin.view_admin')
+@api_request.api_authenticate
+@api_request.admin_authenticate('admin.view_admin')
 def get_administrator(admin_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
     is_branch_admin = admin_data['branch']['branch_id'] == 'ALL'
     Logger.debug(__name__, "get_administrator", "00", "Received request to get administrator [%s]" % admin_id)
 
@@ -186,8 +183,8 @@ def get_administrator(admin_id):
 
 
 @api.route('/v1/administrators/me', methods=['PUT'])
-# @api_request.api_authenticate
-# @api_request.user_authenticate
+@api_request.api_authenticate
+@api_request.user_authenticate
 @api_request.json
 def update_me():
     admin_data = g.admin
@@ -229,12 +226,11 @@ def update_me():
 
 
 @api.route('/v1/administrators/<admin_id>', methods=['PUT'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('admin.update_admin')
+@api_request.api_authenticate
+@api_request.admin_authenticate('admin.update_admin')
 @api_request.json
 def update_admin_profile(admin_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
     institution_data = admin_data['institution']
     admin_branch = admin_data['branch']
 
@@ -300,14 +296,13 @@ def update_admin_profile(admin_id):
 
 
 @api.route('/v1/administrators/<admin_id>/status', methods=['PUT'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('admin.update_admin')
+@api_request.api_authenticate
+@api_request.admin_authenticate('admin.update_admin')
 @api_request.json
 @api_request.required_body_params('status')
 def update_admin_status(admin_id):
     # Get admin data from request context
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
     admin_username = admin_data['username']
     admin_branch = admin_data['branch']
     Logger.debug(__name__, "update_admin_status", "00",

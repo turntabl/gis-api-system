@@ -3,6 +3,7 @@
 import datetime
 import json
 
+from flask import g
 from flask import request
 
 from app.config import config
@@ -22,11 +23,13 @@ from app.services.v1.settings import SettingsService
 
 
 @api.route('/v1/transactions/initiate', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.initiate_cheque')
 @api_request.json
 @api_request.required_body_params('cheque_number', 'account_number', 'payee_name', 'currency', 'amount')
 def initiate_transaction():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -150,6 +153,7 @@ def initiate_transaction():
 
 
 @api.route('/v1/transactions/pre-approval', methods=['POST'])
+# @api_request.api_authenticate
 @api_request.json
 @api_request.required_body_params('cheque_number', 'account_number', 'currency', 'amount', 'msisdn', 'pin')
 def pre_approve_cheque():
@@ -293,15 +297,17 @@ def pre_approve_cheque():
 
 
 @api.route('/v1/transactions/<transaction_id>/pre-approved/process', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.approve_cheque')
 @api_request.json
 @api_request.required_body_params('name', 'balance', 'mandate', 'cheque_instructions', 'payee_name')
 def process_pre_approved_cheque(transaction_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
-    Logger.debug(__name__, "process_pre_approved_cheque", "00", "Received request to complete transaction initiation", request_data)
+    Logger.debug(__name__, "process_pre_approved_cheque", "00", "Received request to process pre-approved cheque", request_data)
     name = request_data['name'].strip()
     balance = request_data['balance']
     mandate = request_data['mandate'].strip()
@@ -363,10 +369,13 @@ def process_pre_approved_cheque(transaction_id):
 
 
 @api.route('/v1/transactions/<transaction_id>/pre-approved/cancel', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.approve_cheque')
+@api_request.json
 @api_request.required_body_params('comment')
 def cancel_pre_approved_cheque(transaction_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -390,7 +399,8 @@ def cancel_pre_approved_cheque(transaction_id):
     Logger.debug(__name__, "cancel_pre_approved_cheque", "00", "Updating transaction [%s] to bounced" % transaction_id)
     transaction_update = {
         'bank_status': BankStatus.CANCELLED.value,
-        'bank_remarks': comment
+        'bank_remarks': comment,
+        'approved_by': admin_data['username']
     }
     try:
         updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
@@ -424,11 +434,13 @@ def cancel_pre_approved_cheque(transaction_id):
 
 
 @api.route('/v1/transactions/<transaction_id>/initiate/complete', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.initiate_cheque')
 @api_request.json
 @api_request.required_body_params('name', 'msisdn', 'balance', 'mandate', 'cheque_instructions')
 def complete_transaction_initiation(transaction_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -536,10 +548,13 @@ def complete_transaction_initiation(transaction_id):
 
 
 @api.route('/v1/transactions/<transaction_id>/bounce', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.approve_cheque')
+@api_request.json
 @api_request.required_body_params('comment')
 def bounce_transaction_before_approval(transaction_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -563,7 +578,8 @@ def bounce_transaction_before_approval(transaction_id):
     Logger.debug(__name__, "bounce_transaction_before_approval", "00", "Updating transaction [%s] to bounced" % transaction_id)
     transaction_update = {
         'bank_status': BankStatus.BOUNCED.value,
-        'bank_remarks': comment
+        'bank_remarks': comment,
+        'approved_by': admin_data['username']
     }
     try:
         updated_transaction_data = TransactionService.update_transaction(transaction_id, transaction_update)
@@ -581,6 +597,8 @@ def bounce_transaction_before_approval(transaction_id):
 
 
 @api.route('/v1/transactions/<transaction_id>/request-approval', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.initiate_cheque')
 def send_approval_request(transaction_id):
     Logger.debug(__name__, "send_approval_request", "00", "Received request to send approval request for transaction [%s]" % transaction_id)
     # Get transaction details
@@ -651,6 +669,7 @@ def send_approval_request(transaction_id):
 
 
 @api.route('/v1/transactions/accounts/<account_number>/pending', methods=['GET'])
+# @api_request.api_authenticate
 def get_pending_approvals_for_account(account_number):
     Logger.debug(__name__, "get_pending_approvals_for_account", "00", "Received request to get approvals for account [%s]" % account_number)
     # Validate account number
@@ -680,6 +699,7 @@ def get_pending_approvals_for_account(account_number):
 
 
 @api.route('/v1/transactions/msisdn/<msisdn>/pending', methods=['GET'])
+# @api_request.api_authenticate
 def get_pending_approvals_for_msisdn(msisdn):
     Logger.debug(__name__, "get_pending_approvals_for_msisdn", "00", "Received request to get approvals for msisdn [%s]" % msisdn)
     # Validate msisdn
@@ -709,6 +729,7 @@ def get_pending_approvals_for_msisdn(msisdn):
 
 
 @api.route('/v1/transactions/accounts/<account_number>/cheques/<cheque_number>', methods=['GET'])
+# @api_request.api_authenticate
 def get_cheque_history(account_number, cheque_number):
     cheque_code = '%s:%s' % (cheque_number, account_number)
     Logger.debug(__name__, "get_cheque_history", "00", "Received request to get cheque history [%s]" % cheque_code)
@@ -746,6 +767,7 @@ def get_cheque_history(account_number, cheque_number):
 
 
 @api.route('/v1/transactions/msisdn/<msisdn>/cheques', methods=['GET'])
+# @api_request.api_authenticate
 def get_cheque_history_for_msisdn(msisdn):
     Logger.debug(__name__, "get_cheque_history_for_msisdn", "00", "Received request to get cheque historiy for msisdn [%s]" % msisdn)
 
@@ -773,6 +795,7 @@ def get_cheque_history_for_msisdn(msisdn):
 
 
 @api.route('/v1/transactions/<transaction_id>', methods=['GET'])
+# @api_request.api_authenticate
 def get_transaction_details(transaction_id):
     Logger.debug(__name__, "get_transaction_details", "00", "Received request to get transaction [%s]" % transaction_id)
 
@@ -786,6 +809,7 @@ def get_transaction_details(transaction_id):
 
 
 @api.route('/v1/transactions/<transaction_id>/customer-approval', methods=['POST'])
+# @api_request.api_authenticate
 @api_request.json
 @api_request.required_body_params('status')
 def customer_approval_decline(transaction_id):
@@ -845,9 +869,11 @@ def customer_approval_decline(transaction_id):
 
 
 @api.route('/v1/transactions/status/pre-approved', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.view_pre_approvals')
 def get_pre_approved_transactions():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     institution = admin_data['institution']['short_name']
     branch = admin_data['branch']['branch_id']
 
@@ -881,9 +907,11 @@ def get_pre_approved_transactions():
 
 
 @api.route('/v1/transactions/customer-approved', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.approve_cheque')
 def get_approved_transactions():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     institution = admin_data['institution']['short_name']
     branch = admin_data['branch']['branch_id']
 
@@ -918,9 +946,11 @@ def get_approved_transactions():
 
 
 @api.route('/v1/transactions/pending-payment-approval', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.approve_cheque')
 def get_cheques_pending_payment():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     institution = admin_data['institution']['short_name']
     branch = admin_data['branch']['branch_id']
 
@@ -955,11 +985,13 @@ def get_cheques_pending_payment():
 
 
 @api.route('/v1/transactions/<transaction_id>/bank/update', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.approve_cheque')
 @api_request.json
 @api_request.required_body_params('status')
 def post_customer_approval_update(transaction_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
     status = request_data['status'].strip()
@@ -1008,9 +1040,11 @@ def post_customer_approval_update(transaction_id):
 
 
 @api.route('/v1/transactions/payment-approved', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.pay_cheque')
 def get_payment_approved_cheques():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     institution = admin_data['institution']['short_name']
     branch = admin_data['branch']['branch_id']
 
@@ -1045,11 +1079,13 @@ def get_payment_approved_cheques():
 
 
 @api.route('/v1/transactions/<transaction_id>/confirm-payout', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('transaction.pay_cheque')
 @api_request.json
 @api_request.required_body_params('payout_type')
 def confirm_payout(transaction_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
     payout_type = request_data['payout_type'].strip()

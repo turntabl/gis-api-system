@@ -21,10 +21,12 @@ from app.services.v1.role import RoleService
 
 
 @api.route('/v1/branches', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('branch.add_branch')
 @api_request.json
 @api_request.required_body_params('name', 'branch_id', 'institution', 'username', 'email', 'first_name', 'last_name')
 def add_branch():
-    admin_data = {'username': 'creator'}
+    admin_data = g.admin
     request_data = json.loads(request.data.decode('utf-8'))
     Logger.debug(__name__, "add_branch", "00", "Received request to add branch", request_data)
     branch_name = request_data['name']
@@ -108,9 +110,11 @@ def add_branch():
 
 
 @api.route('/v1/branches', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('branch.view_branch')
 def get_branches():
-    # admin_data = g.admin
-    # admin_inst_data = admin_data['institution']
+    admin_data = g.admin
+    admin_inst_data = admin_data['institution']
 
     Logger.debug(__name__, "get_branches", "00", "Received request to get branches")
     params = request.args.to_dict()
@@ -131,8 +135,10 @@ def get_branches():
 
 
 @api.route('/v1/branches/<branch_uid>', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('branch.view_branch')
 def get_branch(branch_uid):
-    # admin_data = g.admin
+    admin_data = g.admin
 
     Logger.debug(__name__, "get_branch", "00", "Received request to get branch [%s]" % branch_uid)
 
@@ -146,11 +152,13 @@ def get_branch(branch_uid):
 
 
 @api.route('/v1/branches/<branch_uid>/status', methods=['PUT'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('branch.update_branch')
 @api_request.json
 @api_request.required_body_params('status')
 def update_branch_status(branch_uid):
     # Get admin data from request context
-    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e'}, 'branch': {'branch_id': 'ALL'}}
+    admin_data = g.admin
     admin_username = admin_data['username']
     Logger.debug(__name__, "update_branch_status", "00",
                  "Admin [%s] requesting to change branch [%s] status" % (admin_username, branch_uid))

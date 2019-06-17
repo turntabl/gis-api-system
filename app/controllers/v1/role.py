@@ -13,12 +13,12 @@ from app.services.v1.role import RoleService
 
 
 @api.route('/v1/roles', methods=['POST'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('roles.add_role')
 @api_request.json
-# @api_request.admin_authenticate('admin.add_role')
 @api_request.required_body_params('name', 'privileges')
 def add_role():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator'}
+    admin_data = g.admin
 
     # Get request data
     request_data = json.loads(request.data.decode('utf-8'))
@@ -50,7 +50,10 @@ def add_role():
 
 
 @api.route('/v1/roles', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('roles.view_role')
 def get_roles():
+    admin_data = g.admin
     Logger.debug(__name__, "get_roles", "00", "Received request to get roles")
     params = request.args.to_dict()
     Logger.debug(__name__, "get_roles", "00", "Param(s) received: %s" % params)
@@ -68,8 +71,10 @@ def get_roles():
 
 
 @api.route('/v1/roles/<role_id>', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('roles.view_role')
 def get_role(role_id):
-    # admin_data = g.admin
+    admin_data = g.admin
 
     Logger.debug(__name__, "get_role", "00", "Received request to get role [%s]" % role_id)
 
@@ -83,11 +88,11 @@ def get_role(role_id):
 
 
 @api.route('/v1/roles/<role_id>', methods=['PUT'])
-# @api_request.admin_authenticate
+@api_request.api_authenticate
+@api_request.admin_authenticate('roles.update_role')
 @api_request.json
 def update_role(role_id):
-    # admin_data = g.admin
-    admin_data = {'username': 'creator'}
+    admin_data = g.admin
 
     # if admin_data['user_type'] != UserType.SUPER_ADMIN.value:
     #     Logger.warn(__name__, "update_role", "01", "This user type cannot update institution profile")

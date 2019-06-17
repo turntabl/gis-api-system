@@ -1,5 +1,6 @@
 # report.py
 
+from flask import g
 from flask import request
 
 from app.controllers import api
@@ -13,9 +14,11 @@ from app.services.v1.transaction import TransactionService
 
 
 @api.route('/v1/reports/transactions', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('report.view_report')
 def get_cheques():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
+    # admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
     institution = admin_data['institution']['short_name']
     branch = admin_data['branch']['branch_id']
 
@@ -46,9 +49,10 @@ def get_cheques():
 
 
 @api.route('/v1/reports/transactions/bounced', methods=['GET'])
+@api_request.api_authenticate
+@api_request.admin_authenticate('report.view_report')
 def get_bounced_cheques():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
     institution = admin_data['institution']['short_name']
     branch = admin_data['branch']['branch_id']
 
@@ -67,10 +71,12 @@ def get_bounced_cheques():
     transaction_filter = {
         **allowed_filters,
         'institution': institution,
-        'processed_branch': branch,
         'bank_status': BankStatus.BOUNCED.value,
         'payment_status': PaymentStatus.UNPAID.value
     }
+    # If user does not belong to ALL branch, filter for their branch only
+    if branch != 'ALL':
+        transaction_filter['processed_branch'] = branch
     try:
         transaction_list, nav = TransactionService.find_transactions(paginate=paginate, **transaction_filter)
         Logger.info(__name__, "get_bounced_cheques", "00", "Found %s bounced transaction(s) for branch [%s]" % (nav.get('total_records'), branch))

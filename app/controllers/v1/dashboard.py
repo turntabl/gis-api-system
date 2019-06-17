@@ -14,11 +14,10 @@ from app.services.v1.transaction import TransactionService
 
 
 @api.route('/v1/dashboard/metrics', methods=['GET'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('dashboard.view_dashboard')
+@api_request.api_authenticate
+@api_request.admin_authenticate('dashboard.view_dashboard')
 def get_metrics():
-    # admin_data = g.admin
-    admin_data = {'username': 'creator', 'institution': {'id': '5cdea422feb488013bde8b9e', 'short_name': 'BANK1'}, 'branch': {'branch_id': 'BK1001'}}
+    admin_data = g.admin
     params = request.args.to_dict()
     Logger.debug(__name__, "get_metrics", "00", "Received request to get dashboard metrics", params)
     # Get date and branch params if present

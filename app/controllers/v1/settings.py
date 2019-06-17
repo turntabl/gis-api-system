@@ -2,6 +2,7 @@
 
 import json
 
+from flask import g
 from flask import request
 
 from app.config import config
@@ -13,11 +14,11 @@ from app.services.v1.settings import SettingsService
 
 
 @api.route('/v1/settings', methods=['PUT'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('settings.manage_settings')
+@api_request.api_authenticate
+@api_request.admin_authenticate('settings.manage_settings')
 @api_request.json
 def add_or_update_settings():
-    admin_data = {'username': 'creator'}
+    admin_data = g.admin
     request_data = json.loads(request.data.decode('utf-8'))
     Logger.debug(__name__, "add_or_update_settings", "00", "Received request to add or update settings", request_data)
     pre_approval_expiry_hours = request_data.get('pre_approval_expiry_hours') or config.PRE_APPROVAL_EXPIRY_HOURS
@@ -58,10 +59,10 @@ def add_or_update_settings():
 
 
 @api.route('/v1/settings', methods=['GET'])
-# @api_request.api_authenticate
-# @api_request.admin_authenticate('settings.view_settings')
+@api_request.api_authenticate
+@api_request.admin_authenticate('settings.view_settings')
 def get_settings():
-    # admin_data = g.admin
+    admin_data = g.admin
 
     Logger.debug(__name__, "get_settings", "00", "Received request to get settings")
 
