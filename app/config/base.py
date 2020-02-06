@@ -6,7 +6,7 @@ import os
 class BaseConfig(object):
 
     # Statement for enabling the development environment
-    DEBUG = False
+    DEBUG = True
 
     # Application port
     PORT = 5004
@@ -38,82 +38,13 @@ class BaseConfig(object):
     API_URL = ""
     DEF_HEADER = ""
 
-    # Pagination configs
-    DEFAULT_PAGE = 1
-    DEFAULT_SKIP = 0
-    DEFAULT_LIMIT = 10
+    #Google Map API Key
+    GOOGLE_API_KEY =  os.environ.get('GOOGLE_API_KEY')
 
-    # Logging Configuration
-    ACCESS_LOG_PATH = "logs/access.log"
-    EVENT_LOG_PATH = "logs/event.log"
-    ERROR_LOG_PATH = "logs/error.log"
-    LOG_URL = ""
-
-    # Define the database connections for various dbs
-    # MongoDB Connection variables
-    MONGODB_DB = "payprompt_db"
-    MONGODB_HOST = "127.0.0.1"
-    MONGODB_PORT = 27017
-    MONGODB_USERNAME = ""
-    MONGODB_PASSWORD = ""
-
-    # RabbitMQ Configuration
-    RABBITMQ_HOST = 'localhost'
-    RABBITMQ_PORT = 5672
-    RABBITMQ_USERNAME = 'guest'
-    RABBITMQ_PASSWORD = 'guest'
-    AMQP_URL = 'amqp://{}:{}@{}:{}/%2F'.format(RABBITMQ_USERNAME, RABBITMQ_PASSWORD, RABBITMQ_HOST, RABBITMQ_PORT)
-
-    # LOGSTASH_HOST = "stats.nsano.com"
-    LOGSTASH_HOST = "127.0.0.1"
-    LOGSTASH_PORT = 7000
-    LOGSTASH_APPLICATION_NAME = "PAYPROMPT"
-    LOGSTASH_CHANNEL = "ENGINE"
-    LOGSTASH_SQL_CACHE = "logs/cache_log.db"
-
-    FLUENTD_HOST = "stats.nsano.com"
-    FLUENTD_PORT = 24224
-
-    # Email notification config
-    EMAIL_API_URL = "http://45.79.139.232:7474/sendmail"
-    EMAIL_USERNAME = "notify@nsano.com"
-    EMAIL_PASSWORD = ""
-    EMAIL_SENDER = "PayPrompt"
-    ALERT_LIST = ["p.tuffour@nsano.com"]
-
-    # GRAPHITE CONFIGURATION
-    GRAPHITE_URL = "monitor.nsano.com:2004"
-    GRAPHITE_HOST = "monitor.nsano.com"
-    GRAPHITE_PORT = 2004
-    GRAPHITE_PREFIX = "NSURE"
-
-    PORTAL_URL = 'http://192.168.0.65:9999'
-
-    # Account Management Configuration
-    ENFORCE_PASSWORD_POLICY = True
-    MINIMUM_PASSWORD_LENGTH = 8
-    PASSWORD_RESET_URL = '%s/changePassword?token=<token>&username=<username>' % PORTAL_URL
-    # Password reset activity period
-    PASSWORD_RESET_ACTIVE_MINUTES = 1440
-
-    PASSWORD_EXPIRY_DAYS = 30
-
-    # Other configuration
-    SALT = '$<NBc2W33M;OYl{z'
-    SESSION_EXPIRY_HOURS = 12
-
-    # Default cheque settings
-    PRE_APPROVAL_EXPIRY_HOURS = 48
-    APPROVAL_EXPIRY_HOURS = 24
-    APPROVAL_REMINDER_INTERVAL = 15
-    APPROVAL_REMINDER_FREQUENCY = 3
-
-    PARENT_INST_SHORT_NAME = 'NSANO'
-
-    SEND_SMS_URL = 'https://mysms.nsano.com/api/v1/sms/single'
-    SMS_API_KEY = '610821a7152b390255eb765450e8d000'
-
-    SMS_SENDER = 'PAYPROMPT'
-    CHEQUE_APPROVAL_SMS = 'Dear Customer, you have a pending cheque approval. Kindly dial *718*460# to approve payment.'
-    CHEQUE_CANCEL_SMS = 'Dear Customer, payment of cheque {{cheque_number}} has been declined.\nReason: {{comment}}.\nKindly contact your branch for further assistance.'
-    PRE_APPROVAL_CONFIRMATION_SMS = 'You have successfully pre-approved payment for:\nAcc. No.:{{account_number}}\nCheque No.:{{cheque_number}}\nAmount: GHS {{amount}}'
+    
+    #POSTRGRES CREDENTIALS
+    DB_NAME = os.environ.get('DB_NAME')
+    DB_USERNAME = os.environ.get('DB_USERNAME')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD')
+    DB_HOST = os.environ.get('DB_HOST') 
+    DB_PORT = os.environ.get('DB_PORT')

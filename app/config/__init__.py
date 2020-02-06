@@ -4,8 +4,6 @@ import os
 import sys
 
 from app.config.base import BaseConfig
-from app.config.test import TestConfig
-from app.config.prod import ProdConfig
 
 env = os.environ.get('APP_ENV', 'default')
 print('APP ENVIRONMENT: [%s]' % env)
