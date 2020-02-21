@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - name: Context
-      run: pwd && ls ..
+      run: ls -al /home/runner/work/gis-api-system
     - name: Build & Push to Docker Hub
       uses: opspresso/action-docker@master
       with:
@@ -23,7 +23,7 @@ jobs:
       env:
         USERNAME: ${{ secrets.DOCKER_USERNAME }}
         PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        BUILD_PATH: ..
+        BUILD_PATH: /home/runner/work/gis-api-system
         IMAGE_NAME: "isammyk/gis-docker"
         TAG_NAME: "latest"
         LATEST: "true"
