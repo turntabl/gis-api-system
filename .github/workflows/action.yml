@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - name: Build & Push to Docker Hub
-      uses: Kwakyesamuelosei/gis-api-system@master
+      uses: opspresso/action-docker@master
       with:
         args: --docker
       env:
