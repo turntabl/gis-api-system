@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - name: Context
-      run: sudo find / -name "gis-api-system"
+      run: sudo find . -name "gis-api-system"
     - name: Build & Push to Docker Hub
       uses: opspresso/action-docker@master
       with:
