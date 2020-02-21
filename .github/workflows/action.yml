@@ -15,8 +15,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2 
-    - name: Current dir
-      run: ls -al
     - name: Build & Push to Docker Hub
       uses: opspresso/action-docker@master
       with:
