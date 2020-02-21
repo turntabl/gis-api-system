@@ -14,16 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Context
-      run: sudo find . -name "gis-api-system"
+    - uses: actions/checkout@v2 
+    - name: Current dir
+      run: ls -al
     - name: Build & Push to Docker Hub
       uses: opspresso/action-docker@master
       with:
         args: --docker
       env:
         USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        BUILD_PATH: /home/runner/work/gis-api-system
+        PASSWORD: ${{ secrets.DOCKER_PASSWORD }} 
         IMAGE_NAME: "isammyk/gis-docker"
         TAG_NAME: "latest"
         LATEST: "true"
